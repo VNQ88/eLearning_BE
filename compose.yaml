@@ -1,9 +1,27 @@
 services:
   postgres:
     image: 'postgres:latest'
+    container_name: postgres
+    restart: unless-stopped
     environment:
       - 'POSTGRES_DB=elearning_kma'
       - 'POSTGRES_PASSWORD=postgres'
       - 'POSTGRES_USER=postgres'
     ports:
-      - '5432'
+      - '5432:5432'
+
+  redis:
+    image: redis:8.2-rc1-alpine
+    container_name: redis
+    hostname: redis
+    ports:
+      - '6379:6379'
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+      - REDIS_DISABLE_COMMANDS=FLUSHDB;FLUSHALL
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge

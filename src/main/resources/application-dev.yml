@@ -4,6 +4,13 @@ spring:
     username: postgres
     password: postgres
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 10
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      pool-name: HikariPool
   jpa:
     hibernate:
       ddl-auto: update
@@ -12,7 +19,38 @@ spring:
       hibernate:
         format_sql: true
     database: postgresql
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
+  mail:
+    from: elearningkma@gmail.com
+    host: smtp.gmail.com
+    port: 587
+    username: vuong251103
+    password: jutwhpgimrzpzrwo
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          ssl:
+            trust: smtp.gmail.com
+          connectiontimeout: 5000
+          timeout: 3000
+          writetimeout: 5000
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+application:
+  jwt:
+    signer-key: "RGTpEo990czwgYq+8gfA5Z56nVJcjQi25cPKtaJ+hapof7rMtBoZkat9pkqdvWpv"
+    valid-duration: 36000 # in seconds
+    refreshable-duration: 360000 # in seconds
+  mailing:
+    front-end:
+      verification-code-length: 6
+      verification-code-expiration-minutes: 15 # in minutes
+      activation-url: http://localhost:4200/activate-account
 
 server:
   port: 8080
