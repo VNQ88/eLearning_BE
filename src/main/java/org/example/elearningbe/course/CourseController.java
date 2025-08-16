@@ -80,9 +80,18 @@ public class CourseController {
         }
     }
 
-//    @PutMapping("/{courseId}")
-//    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
-//    @Operation(summary = "Update course", description = "Send a request via this API to update course by courseId")
-//    public ResponseData<?> updateCourse(@PathVariable @Min(1) long courseId,
-//                                        @RequestBody CourseCreationRequest request) {
+    @PutMapping("/{courseId}")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'TEACHER')")
+    @Operation(summary = "Update course", description = "Send a request via this API to update course by courseId")
+    public ResponseData<?> updateCourse(@PathVariable @Min(1) long courseId,
+                                        @Valid @RequestBody CourseRequest request) {
+        log.info("Request to update course with id: {}, title: {}", courseId, request.getTitle());
+        try {
+            CourseResponse courseResponse = courseService.updateCourse(courseId, request);
+            return new ResponseData<>(HttpStatus.OK.value(), "Course updated successfully", courseResponse);
+        } catch (Exception e) {
+            log.error("Error updating course: {}", e.getMessage(), e);
+            return new ResponseError(HttpStatus.BAD_REQUEST.value(), e.getMessage());
+        }
+    }
 }
