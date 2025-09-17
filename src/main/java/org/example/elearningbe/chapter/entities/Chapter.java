@@ -17,6 +17,6 @@ public class Chapter extends BaseEntity {
     @JoinColumn(name = "course_id", nullable = false)
     private Course course;
 
-    @Column(name = "index")
-    private Integer index;
+    @Column(name = "order_index")
+    private Integer orderIndex;
 }

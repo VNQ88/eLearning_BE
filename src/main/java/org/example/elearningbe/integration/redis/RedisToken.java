@@ -1,4 +1,4 @@
-package org.example.elearningbe.redis;
+package org.example.elearningbe.integration.redis;
 
 import lombok.*;
 import org.springframework.data.redis.core.RedisHash;

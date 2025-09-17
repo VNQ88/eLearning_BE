@@ -1,4 +1,4 @@
-package org.example.elearningbe.redis.resetToken;
+package org.example.elearningbe.integration.redis.resetToken;
 
 import org.springframework.data.repository.CrudRepository;
 

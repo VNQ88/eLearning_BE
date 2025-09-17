@@ -7,7 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.example.elearningbe.redis.RedisTokenService;
+import org.example.elearningbe.integration.redis.RedisTokenService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -60,7 +60,7 @@ public class JwtFilter extends OncePerRequestFilter {
         }
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(userEmail);
-        if (jwtService.isTokenValid(jwt, userDetails)) {
+        if (!jwtService.isTokenValid(jwt, userDetails)) {
             throw new IllegalStateException("Token is invalid");
         }
 

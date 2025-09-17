@@ -1,13 +1,11 @@
-package org.example.elearningbe.redis;
+package org.example.elearningbe.integration.redis;
 
 import lombok.RequiredArgsConstructor;
-import org.example.elearningbe.exception.InvalidDataException;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.StreamSupport;
 
 @Service
 @RequiredArgsConstructor

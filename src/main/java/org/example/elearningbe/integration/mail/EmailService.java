@@ -1,4 +1,4 @@
-package org.example.elearningbe.mail;
+package org.example.elearningbe.integration.mail;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.InternetAddress;

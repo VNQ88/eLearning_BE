@@ -10,10 +10,10 @@ import org.example.elearningbe.auth.dto.AuthenticationRequest;
 import org.example.elearningbe.auth.dto.AuthenticationResponse;
 import org.example.elearningbe.auth.dto.RegistrationRequest;
 import org.example.elearningbe.exception.InvalidDataException;
-import org.example.elearningbe.mail.EmailService;
-import org.example.elearningbe.mail.EmailTemplateName;
-import org.example.elearningbe.redis.RedisToken;
-import org.example.elearningbe.redis.RedisTokenService;
+import org.example.elearningbe.integration.mail.EmailService;
+import org.example.elearningbe.integration.mail.EmailTemplateName;
+import org.example.elearningbe.integration.redis.RedisToken;
+import org.example.elearningbe.integration.redis.RedisTokenService;
 import org.example.elearningbe.role.RoleRepository;
 import org.example.elearningbe.security.JwtService;
 import org.example.elearningbe.security.UserDetailServiceImpl;
@@ -137,7 +137,7 @@ public class AuthenticationService {
 
     @Transactional
     public void activateAccount(String code) {
-        VerificationCode savedToken = verificationCodeRepository.findByCode(code)
+        VerificationCode savedToken = verificationCodeRepository.findByCode(code.strip())
                 .orElseThrow(() -> new RuntimeException("Code not found"));
         if (LocalDateTime.now().isAfter(savedToken.getExpiredAt())) {
             throw new RuntimeException("Activation token has expired. A new token has been sent to your email.");

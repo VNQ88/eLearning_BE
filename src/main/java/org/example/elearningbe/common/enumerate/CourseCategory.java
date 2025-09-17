@@ -5,12 +5,10 @@ import com.fasterxml.jackson.annotation.JsonValue;
 
 public enum CourseCategory {
     PROGRAMMING,
-    DATA_SCIENCE,
     DESIGN,
     MARKETING,
     BUSINESS,
     LANGUAGES,
-    PERSONAL_DEVELOPMENT,
     MUSIC,
     PHOTOGRAPHY,
     FINANCE,
@@ -23,6 +21,8 @@ public enum CourseCategory {
         if (value == null) {
             return null;
         }
+        // chuẩn hóa: bỏ khoảng trắng, thay space -> underscore, rồi uppercase
+//        String normalized = value.trim().toUpperCase().replace(" ", "_");
         return CourseCategory.valueOf(value.trim().toUpperCase());
     }
 

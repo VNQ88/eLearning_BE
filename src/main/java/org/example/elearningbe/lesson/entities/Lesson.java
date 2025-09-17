@@ -4,15 +4,14 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.example.elearningbe.chapter.entities.Chapter;
 import org.example.elearningbe.common.BaseEntity;
+import org.example.elearningbe.common.enumerate.LessonType;
 import org.example.elearningbe.course.entities.Course;
 
-import java.time.LocalDateTime;
-
+@Entity
+@Table(name = "lesson")
 @Getter
 @Setter
 @Builder
-@Entity
-@Table(name = "lesson")
 @NoArgsConstructor
 @AllArgsConstructor
 public class Lesson extends BaseEntity {
@@ -22,20 +21,29 @@ public class Lesson extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    // optional thumbnail (ảnh minh họa cho bài học)
     @Column(columnDefinition = "TEXT")
-    private String image;
+    private String imageObjectKey;
 
+    // objectKey duy nhất cho tài nguyên (video hoặc document)
     @Column(columnDefinition = "TEXT", nullable = false)
-    private String video;
+    private String resourceObjectKey;
 
-    @ManyToOne
-    @JoinColumn(name = "courseId", nullable = false)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "lesson_type", nullable = false, length = 20)
+    private LessonType type;   // VIDEO hoặc DOCUMENT
+
+    @Column(name = "duration_minutes", nullable = false)
+    private Integer durationMinutes = 0;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "course_id", nullable = false)
     private Course course;
 
     @Column(name = "order_index")
     private Integer orderIndex;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "chapter_id")
     private Chapter chapter;
 }

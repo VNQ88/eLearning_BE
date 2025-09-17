@@ -1,4 +1,4 @@
-package org.example.elearningbe.mail;
+package org.example.elearningbe.integration.mail;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

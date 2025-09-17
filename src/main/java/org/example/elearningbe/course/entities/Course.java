@@ -3,6 +3,7 @@ package org.example.elearningbe.course.entities;
 import jakarta.persistence.*;
 import lombok.*;
 import org.example.elearningbe.common.BaseEntity;
+import org.example.elearningbe.common.enumerate.CourseCategory;
 import org.example.elearningbe.user.entities.User;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.LastModifiedBy;
@@ -19,16 +20,20 @@ public class Course extends BaseEntity {
     @Column(length = 100, nullable = false)
     private String title;
 
-    @Column(columnDefinition = "TEXT", nullable = true)
+    @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(columnDefinition = "TEXT", nullable = true)
+    @Column(columnDefinition = "TEXT")
     private String image;
 
     @Column(nullable = false, columnDefinition = "FLOAT DEFAULT 0")
     private float price;
 
-    @Column()
+    @Enumerated(EnumType.STRING)
+    @Column(name = "category", nullable = false, length = 50)
+    private CourseCategory category;
+
+    @Column(name = "duration")
     private Integer duration;
 
     @ManyToOne

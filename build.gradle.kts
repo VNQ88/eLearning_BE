@@ -41,11 +41,13 @@ dependencies {
     runtimeOnly("org.postgresql:postgresql")
 
     kapt("org.mapstruct:mapstruct-processor:1.5.5.Final")
-
+    implementation("io.minio:minio:8.5.17")
     implementation("org.mapstruct:mapstruct:1.5.5.Final")
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok-mapstruct-binding:0.2.0")
+
+    implementation("me.paulschwarz:spring-dotenv:4.0.0")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")

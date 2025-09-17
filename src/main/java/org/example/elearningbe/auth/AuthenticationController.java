@@ -5,7 +5,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.elearningbe.auth.dto.AuthenticationRequest;
-import org.example.elearningbe.auth.dto.AuthenticationResponse;
 import org.example.elearningbe.auth.dto.RegistrationRequest;
 import org.example.elearningbe.common.respone.ResponseData;
 import org.example.elearningbe.common.respone.ResponseError;
@@ -49,7 +48,7 @@ public class AuthenticationController {
 
     @PostMapping("/activate-account")
     public ResponseData<?> confirmAccount(
-            @RequestBody String code) throws MessagingException {
+            @RequestParam String code) throws MessagingException {
         try {
             authenticationService.activateAccount(code);
             return new  ResponseData<>(HttpStatus.ACCEPTED.value(), "Account activated.");
