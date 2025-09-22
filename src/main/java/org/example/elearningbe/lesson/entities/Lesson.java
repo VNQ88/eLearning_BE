@@ -2,10 +2,14 @@ package org.example.elearningbe.lesson.entities;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.example.elearningbe.assignment.quiz.Quiz;
 import org.example.elearningbe.chapter.entities.Chapter;
 import org.example.elearningbe.common.BaseEntity;
 import org.example.elearningbe.common.enumerate.LessonType;
 import org.example.elearningbe.course.entities.Course;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "lesson")
@@ -46,4 +50,8 @@ public class Lesson extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "chapter_id")
     private Chapter chapter;
+
+    // trong Lesson.java
+    @OneToMany(mappedBy = "lesson", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Quiz> quizzes = new ArrayList<>();
 }

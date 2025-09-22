@@ -24,6 +24,7 @@ public class LessonMapper {
             );
         }
 
+
         String resourceUrl = minioChannel.presignedGetUrl(
                 lesson.getResourceObjectKey(),
                 minioProps.getPresignExpirySeconds()

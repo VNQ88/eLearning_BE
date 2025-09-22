@@ -3,14 +3,17 @@ package org.example.elearningbe.lesson.dto;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.example.elearningbe.common.enumerate.LessonType;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 
 @Builder
 @Data
 @AllArgsConstructor
-public class LessonResponse {
+@NoArgsConstructor
+public class LessonResponse implements Serializable {
     private Long id;
     private String title;
     private String description;

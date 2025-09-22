@@ -15,6 +15,8 @@ import org.example.elearningbe.lesson.dto.LessonResponse;
 import org.example.elearningbe.lesson.dto.LessonUpdateRequest;
 import org.example.elearningbe.lesson.entities.Lesson;
 import org.example.elearningbe.mapper.LessonMapper;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -37,6 +39,7 @@ public class LessonService {
     private final MinioChannel minioChannel;
     private final LessonMapper lessonMapper;
 
+    @CacheEvict(value = "lessons", allEntries = true)
     public LessonResponse createLesson(LessonCreateRequest req) throws Exception {
         // 1. Lấy course
         Course course = courseRepository.findById(req.getCourseId())
@@ -82,13 +85,13 @@ public class LessonService {
         return lessonMapper.toLessonResponse(lesson);
     }
 
+    @CacheEvict(value = "lessons", allEntries = true)
     public LessonResponse updateLesson(Long id, LessonUpdateRequest req) throws Exception {
         Lesson lesson = findLessonById(id);
 
         // --- phần update như trước ---
         lesson.setTitle(req.getTitle());
         lesson.setDescription(req.getDescription());
-        lesson.setType(req.getType());
         lesson.setDurationMinutes(req.getDurationMinutes());
         lesson.setOrderIndex(req.getOrderIndex());
 
@@ -98,6 +101,7 @@ public class LessonService {
         if (req.getResourceObjectKey() != null) {
             lesson.setResourceObjectKey(req.getResourceObjectKey());
         }
+        if (req.getType() != null) lesson.setType(req.getType());
 
         if (req.getChapterId() != null) {
             Chapter chapter = chapterRepository.findById(req.getChapterId())
@@ -110,6 +114,7 @@ public class LessonService {
         return lessonMapper.toLessonResponse(lesson);
     }
 
+    @CacheEvict(value = "lessons", allEntries = true)
     public LessonResponse patchLesson(Long id, LessonPatchRequest req) throws Exception {
         Lesson lesson = findLessonById(id);
 
@@ -158,6 +163,10 @@ public class LessonService {
         return lesson;
     }
 
+    @Cacheable(
+            value = "lessons",
+            key = "'page=' + #pageNo + ':size=' + #pageSize + ':course=' + #courseId + ':chapter=' + #chapterId + ':type=' + #type + ':title=' + #title"
+    )
     public PageResponse<List<LessonResponse>> getLessons(
             int pageNo, int pageSize,
             Long courseId, Long chapterId,
@@ -202,6 +211,7 @@ public class LessonService {
                 .build();
     }
 
+    @CacheEvict(value = "lessons", allEntries = true)
     public void deleteLesson(Long id, String currentUsername) {
         Lesson lesson = lessonRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Lesson not found"));
@@ -211,9 +221,13 @@ public class LessonService {
             throw new AccessDeniedException("Only course owner can delete lessons");
         }
 
-        // gọi MinioChannel để xóa object
-        minioChannel.removeObject(lesson.getImageObjectKey());
-        minioChannel.removeObject(lesson.getResourceObjectKey());
+        // gom key thành list
+        List<String> objectKeys = new ArrayList<>();
+        if (lesson.getImageObjectKey() != null) objectKeys.add(lesson.getImageObjectKey());
+        if (lesson.getResourceObjectKey() != null) objectKeys.add(lesson.getResourceObjectKey());
+
+        minioChannel.removeObjects(objectKeys);
+
 
         lessonRepository.delete(lesson);
     }

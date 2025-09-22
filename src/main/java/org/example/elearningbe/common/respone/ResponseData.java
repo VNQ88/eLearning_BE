@@ -2,13 +2,15 @@ package org.example.elearningbe.common.respone;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Getter
 @Setter
+@NoArgsConstructor
 public class ResponseData<T> {
-    private final int status;
-    private final String message;
+    private  int status;
+    private  String message;
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private T data;
 

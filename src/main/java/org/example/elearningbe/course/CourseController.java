@@ -15,6 +15,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/course")
 @Slf4j
@@ -66,5 +68,15 @@ public class CourseController {
         log.info("Request to update course with id: {}, title: {}", courseId, request.getTitle());
         CourseResponse courseResponse = courseService.updateCourse(courseId, request);
         return new ResponseData<>(HttpStatus.OK.value(), "Course updated successfully", courseResponse);
+    }
+
+    @GetMapping("/my-courses")
+    @Operation(summary = "Get purchased courses of current user (paginated)", description = "Get courses purchased by the current user with pagination")
+    public ResponseData<PageResponse<List<CourseResponse>>> getMyCourses(
+            @RequestParam(defaultValue = "0") int pageNo,
+            @RequestParam(defaultValue = "10") int pageSize) {
+        return new ResponseData<>(HttpStatus.OK.value(),
+                "Purchased courses",
+                courseService.getMyCourses(pageNo, pageSize));
     }
 }

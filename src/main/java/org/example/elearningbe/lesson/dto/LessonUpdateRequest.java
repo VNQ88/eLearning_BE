@@ -22,7 +22,6 @@ public class LessonUpdateRequest {
     // nếu null -> giữ nguyên
     private String resourceObjectKey;
 
-    @NotNull(message = "Lesson type is required")
     private LessonType type;
 
     @NotNull(message = "Duration is required")

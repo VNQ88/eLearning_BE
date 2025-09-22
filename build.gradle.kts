@@ -25,6 +25,7 @@ configurations {
 
 repositories {
     mavenCentral()
+    maven { url = uri("https://repo.spring.io/milestone") }
 }
 
 dependencies {
@@ -63,6 +64,8 @@ dependencies {
     implementation("redis.clients:jedis")
     // https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-mail
     implementation("org.springframework.boot:spring-boot-starter-mail:3.5.3")
+    // https://mvnrepository.com/artifact/org.springframework.ai/spring-ai-starter-model-openai
+    implementation("org.springframework.ai:spring-ai-starter-model-openai:1.0.1")
 }
 
 kapt {

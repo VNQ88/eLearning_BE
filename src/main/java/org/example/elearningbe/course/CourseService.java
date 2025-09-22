@@ -6,12 +6,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.elearningbe.common.PageResponse;
 import org.example.elearningbe.common.enumerate.CourseCategory;
+import org.example.elearningbe.common.enumerate.OrderStatus;
 import org.example.elearningbe.course.dto.CourseRequest;
 import org.example.elearningbe.course.dto.CourseResponse;
 import org.example.elearningbe.course.entities.Course;
 import org.example.elearningbe.exception.ResourceNotFoundException;
 import org.example.elearningbe.integration.minio.MinioChannel;
 import org.example.elearningbe.integration.minio.dto.UploadResult;
+import org.example.elearningbe.payment.order.OrderItemRepository;
 import org.example.elearningbe.user.UserRepository;
 import org.example.elearningbe.user.entities.User;
 import org.springframework.data.domain.Page;
@@ -19,6 +21,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
@@ -30,6 +33,7 @@ public class CourseService {
     private final MinioChannel minioChannel;
     private final CourseRepository courseRepository;
     private final UserRepository userRepository;
+    private final OrderItemRepository orderItemRepository;
 
     /* ================== CREATE ================== */
     public CourseResponse createCourse(@Valid CourseRequest request) throws Exception {
@@ -153,6 +157,32 @@ public class CourseService {
                 course.getDuration(),
                 course.getOwner() != null ? course.getOwner().getEmail() : null
         );
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<List<CourseResponse>> getMyCourses(int pageNo, int pageSize) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        Pageable pageable = PageRequest.of(pageNo, pageSize);
+
+        Page<Course> page = orderItemRepository.findPurchasedCourses(
+                user.getId(),
+                OrderStatus.PAID,
+                pageable
+        );
+
+        List<CourseResponse> items = page.getContent().stream()
+                .map(this::mapToCourseResponse)
+                .toList();
+
+        return PageResponse.<List<CourseResponse>>builder()
+                .pageNo(pageNo)
+                .pageSize(pageSize)
+                .totalPage(page.getTotalPages())
+                .items(items)
+                .build();
     }
 
     /** Map request -> entity (chưa set owner & image). */

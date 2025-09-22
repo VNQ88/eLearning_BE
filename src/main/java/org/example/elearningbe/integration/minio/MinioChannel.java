@@ -1,6 +1,8 @@
 package org.example.elearningbe.integration.minio;
 
 import io.minio.*;
+import io.minio.messages.DeleteError;
+import io.minio.messages.DeleteObject;
 import jakarta.annotation.PostConstruct;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +18,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URLConnection;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -27,7 +30,7 @@ public class MinioChannel {
 
     private final MinioProps props;
     private final MinioClient minioClient;
-
+    private final MinioProps minioProps;
     @PostConstruct
     private void init() {
         createBucketIfNeeded(props.getBucket(), props.isMakeBucketPublic());
@@ -189,6 +192,33 @@ public class MinioChannel {
             throw new RuntimeException("Could not remove object from MinIO", e);
         }
     }
+
+    public void removeObjects(List<String> objectKeys) {
+        if (objectKeys == null || objectKeys.isEmpty()) return;
+
+        try {
+            List<DeleteObject> deletes = objectKeys.stream()
+                    .filter(Objects::nonNull) // bỏ null
+                    .map(DeleteObject::new)
+                    .toList();
+
+            if (!deletes.isEmpty()) {
+                Iterable<Result<DeleteError>> results = minioClient.removeObjects(
+                        RemoveObjectsArgs.builder()
+                                .bucket(minioProps.getBucket())
+                                .objects(deletes)
+                                .build()
+                );
+                for (Result<DeleteError> result : results) {
+                    DeleteError error = result.get();
+                    log.warn("Failed to delete object {} - {}", error.objectName(), error.message());
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error deleting objects in MinIO", e);
+        }
+    }
+
 
 
     /** Đọc toàn bộ InputStream → byte[] với buffer 8KB. */

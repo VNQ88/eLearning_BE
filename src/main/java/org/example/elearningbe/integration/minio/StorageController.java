@@ -3,6 +3,7 @@ package org.example.elearningbe.integration.minio;
 import io.minio.GetObjectResponse;
 import io.minio.StatObjectResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.elearningbe.common.respone.ResponseData;
@@ -23,6 +24,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/storage")
 @RequiredArgsConstructor
+@Tag(name = "Storage Controller")
 public class StorageController {
 
     private final MinioChannel minioChannel;

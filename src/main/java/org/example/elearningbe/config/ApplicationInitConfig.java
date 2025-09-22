@@ -23,7 +23,6 @@ import java.util.HashSet;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
 public class ApplicationInitConfig {
-    PasswordEncoder passwordEncoder;
     RoleRepository roleRepository;
     @Bean
     @ConditionalOnProperty(
@@ -47,18 +46,18 @@ public class ApplicationInitConfig {
                 log.info("Role 'STUDENT' has been created");
             }
 
-            if (Boolean.FALSE.equals(userRepository.existsByEmail("admin@gmail.com"))) {
+            if (Boolean.FALSE.equals(userRepository.existsByEmail("admin@example.com"))) {
                 HashSet<Role> roles = new HashSet<>();
                 roleRepository.findByName("ADMIN").ifPresent(roles::add);
                 User user = User.builder()
-                        .email("admin@gmail.com")
+                        .email("admin@example.com")
                         .password("admin123")
-                        .fullName("admin")
+                        .fullName("123456")
                         .enabled(true)
                         .roles(roles)
                         .build();
                 userRepository.save(user);
-                log.warn("admin user has been created with default email: admin@gmail.com password: admin123, please change it");
+                log.warn("admin user has been created with default email: admin@example.com password: 123456, please change it");
             }
 
 

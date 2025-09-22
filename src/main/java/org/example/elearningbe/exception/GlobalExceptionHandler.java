@@ -1,4 +1,5 @@
 package org.example.elearningbe.exception;
+
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 
 import java.util.Date;
+import java.util.stream.Collectors;
 
 import static org.springframework.http.HttpStatus.*;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
@@ -29,7 +31,9 @@ public class GlobalExceptionHandler {
      * @return errorResponse
      */
     @ExceptionHandler({ConstraintViolationException.class,
-            MissingServletRequestParameterException.class, MethodArgumentNotValidException.class})
+            MissingServletRequestParameterException.class,
+            MethodArgumentNotValidException.class,
+            IllegalArgumentException.class})
     @ResponseStatus(BAD_REQUEST)
     @ApiResponses(value = {
             @ApiResponse(responseCode = "400", description = "Bad Request",
@@ -58,9 +62,13 @@ public class GlobalExceptionHandler {
         log.info("message: {}", message);
         switch (e) {
             case MethodArgumentNotValidException methodArgumentNotValidException -> {
-                int start = message.lastIndexOf("[") + 1;
-                int end = message.lastIndexOf("]") - 1;
-                message = message.substring(start, end);
+//                int start = message.lastIndexOf("[") + 1;
+//                int end = message.lastIndexOf("]") - 1;
+//                message = message.substring(start, end);
+                message = methodArgumentNotValidException.getBindingResult().getFieldErrors()
+                        .stream()
+                        .map(err -> err.getField() + " " + err.getDefaultMessage())
+                        .collect(Collectors.joining(", "));
                 errorResponse.setError("Invalid Payload");
                 errorResponse.setMessage(message);
             }
@@ -71,6 +79,10 @@ public class GlobalExceptionHandler {
             case ConstraintViolationException constraintViolationException -> {
                 errorResponse.setError("Invalid Parameter");
                 errorResponse.setMessage(message.substring(message.indexOf(" ") + 1));
+            }
+            case IllegalArgumentException ex -> {
+                errorResponse.setError("Invalid Argument");
+                errorResponse.setMessage(ex.getMessage());
             }
             default -> {
                 errorResponse.setError("Invalid Data");
