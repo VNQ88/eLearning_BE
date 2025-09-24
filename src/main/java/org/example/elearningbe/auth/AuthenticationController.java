@@ -6,9 +6,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.mail.MessagingException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.example.elearningbe.auth.dto.AuthenticationRequest;
 import org.example.elearningbe.auth.dto.RegistrationRequest;
+import org.example.elearningbe.auth.dto.SetNewPasswordRequest;
+import org.example.elearningbe.auth.dto.VerifyCodeRequest;
 import org.example.elearningbe.common.respone.ResponseData;
 import org.example.elearningbe.common.respone.ResponseError;
 import org.springframework.http.HttpStatus;
@@ -82,4 +85,42 @@ public class AuthenticationController {
             throw e;
         }
     }
+
+    @Operation(
+            summary = "Forgot password",
+            description = "Gửi email đặt lại mật khẩu cho người dùng."
+    )
+    @PostMapping("/forgot-password")
+    public ResponseData<?> forgotPassword(@RequestParam @NotBlank String email) throws MessagingException {
+        return new ResponseData<>(HttpStatus.OK.value(),
+                authenticationService.forgotPassword(email));
+    }
+
+
+    @PostMapping("/verify-reset-code")
+    public ResponseData<?> verifyResetCode(@RequestBody @Valid VerifyCodeRequest request) throws MessagingException {
+        try {
+            authenticationService.verifyResetCode(request);
+            return new ResponseData<>(HttpStatus.OK.value(), "Code verified successfully");
+        }
+        catch (RuntimeException e) {
+            if (e.getMessage().contains("expired")) {
+                authenticationService.resendActivationCode(request.getCode());
+                return new ResponseError(HttpStatus.BAD_REQUEST.value(), e.getMessage());
+            }
+            throw e;
+        }
+    }
+    @Operation(
+            summary = "Reset password",
+            description = "Đặt lại mật khẩu bằng mã code đã được gửi qua email."
+    )
+
+    @PostMapping("/reset-password")
+    public ResponseData<?> resetPassword(@RequestBody @Valid SetNewPasswordRequest request){
+        authenticationService.resetPassword(request);
+        return new ResponseData<>(HttpStatus.OK.value(), "Password has been reset successfully");
+    }
+
+
 }

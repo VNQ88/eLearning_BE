@@ -1,17 +1,19 @@
 package org.example.elearningbe.user;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.example.elearningbe.common.PageResponse;
 import org.example.elearningbe.exception.ResourceNotFoundException;
 import org.example.elearningbe.mapper.UserMapper;
+import org.example.elearningbe.user.dto.ChangePasswordRequest;
 import org.example.elearningbe.user.dto.UserResponse;
 import org.example.elearningbe.user.entities.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -22,6 +24,7 @@ import java.util.Optional;
 public class UserService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final PasswordEncoder passwordEncoder;
 
     public PageResponse<?> getAllUsers(int pageNo, @Min(10) int pageSize) {
         Page<User> userPage = userRepository.findAll(PageRequest.of(pageNo, pageSize));
@@ -59,5 +62,20 @@ public class UserService {
             throw new ResourceNotFoundException("Current user not found");
         }
         return userMapper.toUserResponse(user.get());
+    }
+
+    public void changePassword(@Valid ChangePasswordRequest request) {
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new IllegalArgumentException("New password and confirm new password do not match");
+        }
+
+        String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + userEmail));
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
+            throw new IllegalArgumentException("Old password is incorrect");
+        }
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
     }
 }

@@ -6,10 +6,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.example.elearningbe.auth.dto.AuthenticationRequest;
-import org.example.elearningbe.auth.dto.AuthenticationResponse;
-import org.example.elearningbe.auth.dto.RegistrationRequest;
+import org.example.elearningbe.auth.dto.*;
 import org.example.elearningbe.exception.InvalidDataException;
+import org.example.elearningbe.exception.ResourceNotFoundException;
 import org.example.elearningbe.integration.mail.EmailService;
 import org.example.elearningbe.integration.mail.EmailTemplateName;
 import org.example.elearningbe.integration.redis.RedisToken;
@@ -81,7 +80,7 @@ public class AuthenticationService {
             if (existingUser.isEnabled()) {
                 throw new RuntimeException("User with this email already exists and is activated");
             } else {
-                sendValidationEmail((User) existingUser);
+                sendValidationEmail((User) existingUser, EmailTemplateName.ACTIVATE_ACCOUNT);
             }
             return;
         }
@@ -96,15 +95,15 @@ public class AuthenticationService {
                 .roles(Set.of(userRole))
                 .build();
         userRepository.save(user);
-        sendValidationEmail(user);
+        sendValidationEmail(user, EmailTemplateName.ACTIVATE_ACCOUNT);
     }
 
-    private void sendValidationEmail(User user) throws MessagingException {
+    private void sendValidationEmail(User user, EmailTemplateName templateName) throws MessagingException {
         var newCode = generateAndSaveActivationCode(user);
 
         emailService.sendEmail(user.getEmail(),
                 user.getFullName(),
-                EmailTemplateName.ACTIVATE_ACCOUNT,
+                templateName,
                 activationUrl,
                 newCode,
                 "Activate your account");
@@ -137,11 +136,8 @@ public class AuthenticationService {
 
     @Transactional
     public void activateAccount(String code) {
-        VerificationCode savedToken = verificationCodeRepository.findByCode(code.strip())
-                .orElseThrow(() -> new RuntimeException("Code not found"));
-        if (LocalDateTime.now().isAfter(savedToken.getExpiredAt())) {
-            throw new RuntimeException("Activation token has expired. A new token has been sent to your email.");
-        }
+        VerificationCode savedToken = verifyCode(code);
+
         var user = userRepository.findById(savedToken.getUser().getId())
                 .orElseThrow(() -> new RuntimeException("User not found"));
         user.setEnabled(true);
@@ -156,7 +152,7 @@ public class AuthenticationService {
                 .orElseThrow(() -> new RuntimeException("Cannot find user for code"));
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        sendValidationEmail(user);
+        sendValidationEmail(user, EmailTemplateName.ACTIVATE_ACCOUNT);
     }
 
     public AuthenticationResponse refreshToken(HttpServletRequest request) {
@@ -171,7 +167,7 @@ public class AuthenticationService {
         }
         final String userName = jwtService.extractUsername(refreshToken);
         var user = userDetailService.loadUserByUsername(userName);
-        if (jwtService.isTokenValid(refreshToken, user)) {
+        if (!jwtService.isTokenValid(refreshToken, user)) {
             throw new InvalidDataException("Not allow access with this token");
         }
 
@@ -207,10 +203,10 @@ public class AuthenticationService {
 
         final String userName = jwtService.extractUsername(accessToken);
         var user = userDetailService.loadUserByUsername(userName);
-        if (jwtService.isTokenValid(accessToken, user)) {
+        if (!jwtService.isTokenValid(accessToken, user)) {
             throw new InvalidDataException("Invalid access token");
         }
-        if (jwtService.isTokenValid(refreshToken, user)) {
+        if (!jwtService.isTokenValid(refreshToken, user)) {
             throw new InvalidDataException("Invalid refresh token");
         }
 
@@ -223,26 +219,53 @@ public class AuthenticationService {
                 .build());
     }
 
-//    public String forgotPassword(String email) {
-//        log.info("---------- forgotPassword ----------");
-//
-//        // check email exists or not
-//        User user = userService.getUserByEmail(email);
-//
-//        // generate reset token
-//        String resetToken = jwtService.generateResetToken(user);
-//
-//        // save to db
-//        // tokenService.save(Token.builder().username(user.getUsername()).resetToken(resetToken).build());
-//        redisTokenService.save(RedisToken.builder().id(user.getUsername()).resetToken(resetToken).build());
-//
-//        // TODO send email to user
-//        String confirmLink = String.format("curl --location 'http://localhost:80/auth/reset-password' \\\n" +
-//                "--header 'accept: */*' \\\n" +
-//                "--header 'Content-Type: application/json' \\\n" +
-//                "--data '%s'", resetToken);
-//        log.info("--> confirmLink: {}", confirmLink);
-//
-//        return resetToken;
-//    }
+    public String forgotPassword(String email) throws MessagingException {
+        log.info("---------- forgotPassword ----------");
+        if (!userRepository.existsByEmail(email))
+            throw new RuntimeException("User with this email does not exist");
+        User existingUser = userRepository.findByEmail(email).orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        if (!existingUser.isEnabled()) {
+            sendValidationEmail(existingUser, EmailTemplateName.ACTIVATE_ACCOUNT);
+            return "Your account is not activated. An activation email has been sent to your email address.";
+        }
+        else {
+            sendValidationEmail(existingUser, EmailTemplateName.RESET_PASSWORD);
+            return "A password reset email has been sent to your email address.";
+        }
+    }
+
+    public void verifyResetCode(VerifyCodeRequest request)  {
+        VerificationCode resetCode = verifyCode(request.getCode());
+        if (!resetCode.getUser().getEmail().equals(request.getEmail())) {
+            throw new RuntimeException("Code does not match email");
+        }
+        resetCode.setValidatedAt(LocalDateTime.now());
+        verificationCodeRepository.save(resetCode);
+    }
+
+
+    public void resetPassword(SetNewPasswordRequest request) {
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new RuntimeException("Password and confirm password do not match");
+        }
+        VerificationCode resetCode = verifyCode(request.getCode());
+        if (!resetCode.getUser().getEmail().equals(request.getEmail())) {
+            throw new RuntimeException("Code does not match email");
+        }
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setPassword(request.getNewPassword());
+        userRepository.save(user);
+    }
+
+
+//    ----------------- Private methods -----------------
+    private VerificationCode verifyCode(String code){
+        VerificationCode savedToken = verificationCodeRepository.findByCode(code.strip())
+                .orElseThrow(() -> new RuntimeException("Code not found"));
+        if (LocalDateTime.now().isAfter(savedToken.getExpiredAt())) {
+            throw new RuntimeException("Activation token has expired. A new token has been sent to your email.");
+        }
+        return savedToken;
+    }
 }

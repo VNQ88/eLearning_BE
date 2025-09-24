@@ -3,11 +3,13 @@ package org.example.elearningbe.user;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.elearningbe.common.PageResponse;
 import org.example.elearningbe.common.respone.ResponseData;
+import org.example.elearningbe.user.dto.ChangePasswordRequest;
 import org.example.elearningbe.user.dto.UserResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -49,5 +51,13 @@ public class UserController {
         log.info("Request get current user information");
         UserResponse user = userService.getCurrentUser();
         return new ResponseData<>(HttpStatus.OK.value(), "current user", user);
+    }
+
+    @PostMapping("/change-password")
+    @Operation(summary = "Change user password", description = "Send a request via this API to change user password")
+    public ResponseData<?> changePassword(@RequestBody @Valid ChangePasswordRequest request) {
+        log.info("Request change password for user");
+        userService.changePassword(request);
+        return new ResponseData<>(HttpStatus.OK.value(), "Change password successful");
     }
 }
