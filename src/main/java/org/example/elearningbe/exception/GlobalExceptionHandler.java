@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -14,7 +15,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 
 import java.util.Date;
-import java.util.stream.Collectors;
 
 import static org.springframework.http.HttpStatus.*;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
@@ -33,6 +33,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({ConstraintViolationException.class,
             MissingServletRequestParameterException.class,
             MethodArgumentNotValidException.class,
+            BadCredentialsException.class,
             IllegalArgumentException.class})
     @ResponseStatus(BAD_REQUEST)
     @ApiResponses(value = {
@@ -62,13 +63,13 @@ public class GlobalExceptionHandler {
         log.info("message: {}", message);
         switch (e) {
             case MethodArgumentNotValidException methodArgumentNotValidException -> {
-//                int start = message.lastIndexOf("[") + 1;
-//                int end = message.lastIndexOf("]") - 1;
-//                message = message.substring(start, end);
-                message = methodArgumentNotValidException.getBindingResult().getFieldErrors()
-                        .stream()
-                        .map(err -> err.getField() + " " + err.getDefaultMessage())
-                        .collect(Collectors.joining(", "));
+                int start = message.lastIndexOf("[") + 1;
+                int end = message.lastIndexOf("]") - 1;
+                message = message.substring(start, end);
+//                message = methodArgumentNotValidException.getBindingResult().getFieldErrors()
+//                        .stream()
+//                        .map(err -> err.getField() + " " + err.getDefaultMessage())
+//                        .collect(Collectors.joining(", "));
                 errorResponse.setError("Invalid Payload");
                 errorResponse.setMessage(message);
             }
@@ -84,12 +85,16 @@ public class GlobalExceptionHandler {
                 errorResponse.setError("Invalid Argument");
                 errorResponse.setMessage(ex.getMessage());
             }
+            case BadCredentialsException badCredentialsException -> {
+                errorResponse.setError("Unauthorized");
+                errorResponse.setMessage(badCredentialsException.getMessage());
+            }
             default -> {
                 errorResponse.setError("Invalid Data");
                 errorResponse.setMessage(message);
             }
         }
-
+        log.error("ValidationException: ", e);
         return errorResponse;
     }
 
@@ -127,7 +132,7 @@ public class GlobalExceptionHandler {
         errorResponse.setStatus(NOT_FOUND.value());
         errorResponse.setError(NOT_FOUND.getReasonPhrase());
         errorResponse.setMessage(e.getMessage());
-
+        log.error("ResourceNotFoundException: ", e);
         return errorResponse;
     }
 
@@ -164,7 +169,7 @@ public class GlobalExceptionHandler {
         errorResponse.setStatus(CONFLICT.value());
         errorResponse.setError(CONFLICT.getReasonPhrase());
         errorResponse.setMessage(e.getMessage());
-
+        log.error("InvalidDataException: ", e);
         return errorResponse;
     }
 
@@ -201,7 +206,7 @@ public class GlobalExceptionHandler {
         errorResponse.setStatus(INTERNAL_SERVER_ERROR.value());
         errorResponse.setError(INTERNAL_SERVER_ERROR.getReasonPhrase());
         errorResponse.setMessage(e.getMessage());
-
+        log.error("Exception: ", e);
         return errorResponse;
     }
 }

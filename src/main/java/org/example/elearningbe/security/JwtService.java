@@ -26,7 +26,6 @@ public class JwtService {
     private String secretKey = "secretKey";
 
 
-
     public String generateToken(UserDetails userDetails, Long duration) {
         return generateToken(new HashMap<>(), userDetails, duration);
     }

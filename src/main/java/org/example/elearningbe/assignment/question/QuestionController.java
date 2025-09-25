@@ -9,7 +9,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/questions")
+@RequestMapping("/questions")
 @RequiredArgsConstructor
 @Tag(name = "Question Controller", description = "Operations related to questions and choices")
 public class QuestionController {
