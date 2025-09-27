@@ -60,6 +60,25 @@ public class CourseController {
         return new ResponseData<>(HttpStatus.OK.value(), "course", courseService.getCourseByTitle(title, pageNo, pageSize));
     }
 
+
+
+    @GetMapping
+    @Operation(summary = "Get courses with filters")
+    public ResponseData<?> getCoursesWithFilter(
+            @RequestParam(defaultValue = "0") int pageNo,
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String ownerEmail,
+            @RequestParam(required = false) Float minPrice,
+            @RequestParam(required = false) Float maxPrice
+    ) {
+        return new ResponseData<>(HttpStatus.OK.value(),
+                "Filtered courses",
+                courseService.getCoursesWithFilter(pageNo, pageSize, title, category, ownerEmail, minPrice, maxPrice));
+    }
+
+
     @PutMapping(value = "/{courseId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyAuthority('ADMIN', 'TEACHER')")
     @Operation(summary = "Update course", description = "Update course (optionally replace image) with multipart/form-data")

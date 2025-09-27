@@ -19,6 +19,7 @@ import org.example.elearningbe.user.entities.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -94,6 +95,65 @@ public class CourseService {
                 .items(items)
                 .build();
     }
+
+    /* ================== FILTER ================== */
+    @Transactional(readOnly = true)
+    public PageResponse<List<CourseResponse>> getCoursesWithFilter(
+            int pageNo,
+            int pageSize,
+            String title,
+            String category,
+            String ownerEmail,
+            Float minPrice,
+            Float maxPrice
+    ) {
+        Pageable pageable = PageRequest.of(pageNo, pageSize);
+
+        Specification<Course> spec = (root, query, cb) -> {
+            var predicates = cb.conjunction();
+
+            if (StringUtils.hasText(title)) {
+                predicates.getExpressions().add(
+                        cb.like(cb.lower(root.get("title")), "%" + title.toLowerCase() + "%")
+                );
+            }
+            if (StringUtils.hasText(category)) {
+                predicates.getExpressions().add(
+                        cb.equal(root.get("category"), CourseCategory.fromString(category))
+                );
+            }
+            if (StringUtils.hasText(ownerEmail)) {
+                predicates.getExpressions().add(
+                        cb.equal(root.join("owner").get("email"), ownerEmail)
+                );
+            }
+            if (minPrice != null) {
+                predicates.getExpressions().add(
+                        cb.greaterThanOrEqualTo(root.get("price"), minPrice)
+                );
+            }
+            if (maxPrice != null) {
+                predicates.getExpressions().add(
+                        cb.lessThanOrEqualTo(root.get("price"), maxPrice)
+                );
+            }
+            return predicates;
+        };
+
+        Page<Course> page = courseRepository.findAll(spec, pageable);
+
+        List<CourseResponse> items = page.getContent().stream()
+                .map(this::mapToCourseResponse)
+                .toList();
+
+        return PageResponse.<List<CourseResponse>>builder()
+                .pageNo(pageNo)
+                .pageSize(pageSize)
+                .totalPage(page.getTotalPages())
+                .items(items)
+                .build();
+    }
+
 
     /* ================== UPDATE ================== */
     public CourseResponse updateCourse(@Min(1) long courseId, @Valid CourseRequest request) throws Exception {

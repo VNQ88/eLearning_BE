@@ -203,7 +203,7 @@ public class GlobalExceptionHandler {
         ErrorResponse errorResponse = new ErrorResponse();
         errorResponse.setTimestamp(new Date());
         errorResponse.setPath(request.getDescription(false).replace("uri=", ""));
-        errorResponse.setStatus(INTERNAL_SERVER_ERROR.value());
+        errorResponse.setStatus(BAD_REQUEST.value());
         errorResponse.setError(INTERNAL_SERVER_ERROR.getReasonPhrase());
         errorResponse.setMessage(e.getMessage());
         log.error("Exception: ", e);
