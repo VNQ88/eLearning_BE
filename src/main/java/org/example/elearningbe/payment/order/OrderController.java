@@ -20,7 +20,7 @@ public class OrderController {
 
     @PostMapping("/checkout")
     @Operation(summary = "Checkout cart → create order (mock payment success)")
-    public ResponseData<OrderResponse> checkout() {
+    public ResponseData<CheckoutResponse> checkout() throws Exception {
         return new ResponseData<>(HttpStatus.OK.value(), "Checkout success", orderService.checkout());
     }
 

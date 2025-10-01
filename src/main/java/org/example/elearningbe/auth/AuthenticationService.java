@@ -24,6 +24,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.exceptions.TemplateInputException;
 
@@ -43,6 +44,7 @@ public class AuthenticationService {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final RedisTokenService redisTokenService;
+    private final PasswordEncoder passwordEncoder;
 
     @Value("${application.jwt.valid-duration}")
     private int validDuration;
@@ -254,7 +256,8 @@ public class AuthenticationService {
         }
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        user.setPassword(request.getNewPassword());
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        user.setEnabled(true);
         userRepository.save(user);
     }
 

@@ -14,6 +14,7 @@ public enum CourseCategory {
     FINANCE,
     ENGINEERING,
     TEACHING,
+    DEVOPS,
     OTHER;
 
     @JsonCreator

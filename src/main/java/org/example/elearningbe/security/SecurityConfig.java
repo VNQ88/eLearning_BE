@@ -18,9 +18,11 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @RequiredArgsConstructor
 @EnableMethodSecurity(securedEnabled = true)
 public class SecurityConfig {
-    private static final String[] AUTH_WHITELIST = {"/auth/**", "/api/v1/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/webjars/**", "/actuator/**"};
+    private static final String[] AUTH_WHITELIST = {"/auth/**", "/api/v1/auth/**", "/v3/api-docs/**", "/swagger-ui/**",
+            "/swagger-ui.html", "/webjars/**", "/actuator/**", "/payment/callback", "/course/get/**"};
     private final JwtFilter jwtAuthFilter;
     private final AuthenticationProvider authenticationProvider;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
