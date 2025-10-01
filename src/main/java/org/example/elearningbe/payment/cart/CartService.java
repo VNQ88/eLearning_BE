@@ -2,6 +2,7 @@ package org.example.elearningbe.payment.cart;
 import lombok.RequiredArgsConstructor;
 import org.example.elearningbe.course.CourseRepository;
 import org.example.elearningbe.course.entities.Course;
+import org.example.elearningbe.course_tracking.course_enrollment.CourseEnrollmentRepository;
 import org.example.elearningbe.exception.ResourceNotFoundException;
 import org.example.elearningbe.payment.cart.dto.CartItemResponse;
 import org.example.elearningbe.payment.cart.dto.CartResponse;
@@ -11,6 +12,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -19,6 +21,7 @@ public class CartService {
     private final CartRepository cartRepository;
     private final CourseRepository courseRepository;
     private final UserRepository userRepository;
+    private final CourseEnrollmentRepository courseEnrollmentRepository;
 
     private User getCurrentUser() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -42,7 +45,13 @@ public class CartService {
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Course not found"));
 
-        // check nếu đã có khóa học trong giỏ
+        // ✅ Check nếu user đã mua (enrolled) course này
+        boolean alreadyEnrolled = courseEnrollmentRepository.findByUserAndCourse(user, course).isPresent();
+        if (alreadyEnrolled) {
+            throw new IllegalArgumentException("You already purchased this course");
+        }
+
+        // Check nếu course đã có trong cart
         boolean exists = cart.getItems().stream()
                 .anyMatch(i -> i.getCourse().getId().equals(courseId));
         if (exists) {
@@ -59,6 +68,7 @@ public class CartService {
         cartRepository.save(cart);
         return mapToResponse(cart);
     }
+
 
     public CartResponse getCart() {
         User user = getCurrentUser();
@@ -99,9 +109,9 @@ public class CartService {
                 ))
                 .toList();
 
-        float total = (float) items.stream()
-                .mapToDouble(i -> i.price() * i.quantity())
-                .sum();
+        BigDecimal total = items.stream()
+                .map(i -> i.price().multiply(BigDecimal.valueOf(i.quantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         return new CartResponse(cart.getId(), items, total);
     }

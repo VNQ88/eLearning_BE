@@ -81,6 +81,6 @@ application:
     key1: PcY4iZIKFCIdgZvA6ueMcMHHUbRLYjPL
     key2: kLtgPl8HHhfvMuDHPwKfgfsY4Ydm9eIz
     endpoint: https://sb-openapi.zalopay.vn/v2/create
-    callback-url: https://7dbad9f627ae.ngrok-free.app/api/v1/payment/callback
+    callback-url: https://893704a67416.ngrok-free.app/api/v1/payment/callback
 server:
   port: 8080

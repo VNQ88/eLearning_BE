@@ -34,7 +34,7 @@ public class CourseController {
         return new ResponseData<>(HttpStatus.OK.value(), "Course created successfully", courseResponse);
     }
 
-    @GetMapping("get/list")
+    @GetMapping("/get/list")
     @Operation(summary = "Get all courses", description = "Get paginated courses")
     public ResponseData<?> getAllCourses(@RequestParam(defaultValue = "0", required = false) int pageNo,
                                          @Min(10) @RequestParam(defaultValue = "20", required = false) int pageSize) {
@@ -43,7 +43,7 @@ public class CourseController {
         return new ResponseData<>(HttpStatus.OK.value(), "courses", courses);
     }
 
-    @GetMapping("get//{courseId}")
+    @GetMapping("/get/{courseId}")
     @Operation(summary = "Get course detail", description = "Get course detail by courseId")
     public ResponseData<?> getCourse(@PathVariable @Min(1) long courseId) {
         log.info("Request to get course detail, courseId={}", courseId);
@@ -51,7 +51,7 @@ public class CourseController {
         return new ResponseData<>(HttpStatus.OK.value(), "course", courseResponse);
     }
 
-    @GetMapping("get//title")
+    @GetMapping("/get/title")
     @Operation(summary = "Get course by title", description = "Find courses by title (case-insensitive)")
     public ResponseData<?> getCourseByTitle(@RequestParam String title,
                                             @RequestParam (defaultValue = "0", required = false) Integer pageNo,
@@ -62,7 +62,7 @@ public class CourseController {
 
 
 
-    @GetMapping("get/filter")
+    @GetMapping("/get/filter")
     @Operation(summary = "Get courses with filters")
     public ResponseData<?> getCoursesWithFilter(
             @RequestParam(defaultValue = "0") int pageNo,
@@ -89,7 +89,7 @@ public class CourseController {
         return new ResponseData<>(HttpStatus.OK.value(), "Course updated successfully", courseResponse);
     }
 
-    @GetMapping("get/my-courses")
+    @GetMapping("/get/my-courses")
     @Operation(summary = "Get purchased courses of current user (paginated)", description = "Get courses purchased by the current user with pagination")
     public ResponseData<PageResponse<List<CourseResponse>>> getMyCourses(
             @RequestParam(defaultValue = "0") int pageNo,

@@ -18,7 +18,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashMap;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -44,7 +44,10 @@ public class OrderService {
             throw new IllegalArgumentException("Cart has no items");
         }
 
-        float total = (float) cart.getItems().stream().mapToDouble(i -> i.getCourse().getPrice() * i.getQuantity()).sum();
+        // tính tổng tiền
+        BigDecimal total = cart.getItems().stream()
+                .map(i -> i.getCourse().getPrice())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         Order order = Order.builder().buyer(user).status(OrderStatus.PENDING) // chờ thanh toán
                 .totalAmount(total).build();

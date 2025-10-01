@@ -193,22 +193,7 @@ public class LessonService {
 
         Page<Lesson> page = lessonRepository.findAll(spec, pageable);
 
-        List<LessonResponse> responses = page.getContent().stream()
-                .map(lesson -> {
-                    try {
-                        return lessonMapper.toLessonResponse(lesson);
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
-                })
-                .toList();
-
-        return PageResponse.<List<LessonResponse>>builder()
-                .pageNo(pageNo)
-                .pageSize(pageSize)
-                .totalPage(page.getTotalPages())
-                .items(responses)
-                .build();
+        return getListPageResponse(pageNo, pageSize, page);
     }
 
     @CacheEvict(value = "lessons", allEntries = true)
@@ -230,5 +215,31 @@ public class LessonService {
 
 
         lessonRepository.delete(lesson);
+    }
+
+    public PageResponse<List<LessonResponse>> getLessonsByCourse(Long courseId, int pageNo, int pageSize) {
+        Pageable pageable = PageRequest.of(pageNo, pageSize, Sort.by("orderIndex").ascending());
+        Page<Lesson> page = lessonRepository.findByCourseId(courseId, pageable);
+        return getListPageResponse(pageNo, pageSize, page);
+    }
+
+    // ------------------ HELPER METHODS -----------------
+    private PageResponse<List<LessonResponse>> getListPageResponse(int pageNo, int pageSize, Page<Lesson> page) {
+        List<LessonResponse> responses = page.getContent().stream()
+                .map(lesson -> {
+                    try {
+                        return lessonMapper.toLessonResponse(lesson);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                })
+                .toList();
+
+        return PageResponse.<List<LessonResponse>>builder()
+                .pageNo(pageNo)
+                .pageSize(pageSize)
+                .totalPage(page.getTotalPages())
+                .items(responses)
+                .build();
     }
 }

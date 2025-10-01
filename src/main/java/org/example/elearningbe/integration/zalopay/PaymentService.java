@@ -1,21 +1,19 @@
 package org.example.elearningbe.integration.zalopay;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.example.elearningbe.common.enumerate.PaymentMethod;
-import org.example.elearningbe.common.enumerate.TransactionStatus;
-import org.example.elearningbe.payment.transaction.TransactionRepository;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.stereotype.Service;
-
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.example.elearningbe.common.enumerate.OrderStatus;
+import org.example.elearningbe.common.enumerate.*;
+import org.example.elearningbe.course_tracking.course_enrollment.CourseEnrollment;
+import org.example.elearningbe.course_tracking.course_enrollment.CourseEnrollmentRepository;
 import org.example.elearningbe.payment.order.Order;
 import org.example.elearningbe.payment.order.OrderRepository;
 import org.example.elearningbe.payment.transaction.Transaction;
+import org.example.elearningbe.payment.transaction.TransactionRepository;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.http.*;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
@@ -24,86 +22,83 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 
 @Slf4j
-@EnableConfigurationProperties(ZaloPayProps.class)
 @Service
+@EnableConfigurationProperties(ZaloPayProps.class)
 @RequiredArgsConstructor
 public class PaymentService {
-
+    private final CourseEnrollmentRepository courseEnrollmentRepository;
     private final ZaloPayProps zaloPayProps;
-    private final RestTemplate restTemplate = new RestTemplate();
     private final TransactionRepository transactionRepository;
     private final OrderRepository orderRepository;
+    private final RestTemplate restTemplate = new RestTemplate();
 
-    /**
-     * Tạo giao dịch ZaloPay
-     */
+    /** Tạo giao dịch ZaloPay cho Order */
     public Map<String, Object> createZaloPayOrder(Order order) throws Exception {
         long appTime = System.currentTimeMillis();
         String appTransId = new SimpleDateFormat("yyMMdd").format(new Date()) + "_" + order.getId();
-
+        long amount = order.getTotalAmount().longValue();
         String embedData = "{\"redirecturl\":\"http://localhost:3000/orders\"}";
-        String item = "[{\"itemid\":\"course\",\"itemname\":\"Order #" + order.getId() +
-                "\",\"itemprice\":" + order.getTotalAmount() + "}]";
+        String item = "[{\"itemid\":\"order\",\"itemname\":\"Order #" + order.getId() +
+                "\",\"itemprice\":" + amount + "}]";
 
         Map<String, String> params = new LinkedHashMap<>();
         params.put("app_id", zaloPayProps.getAppId());
         params.put("app_trans_id", appTransId);
         params.put("app_time", String.valueOf(appTime));
         params.put("app_user", "user_" + order.getBuyer().getId());
-        params.put("amount", String.valueOf((long) order.getTotalAmount()));
+        params.put("amount", String.valueOf(amount));
         params.put("description", "Thanh toan don hang #" + order.getId());
         params.put("bank_code", "zalopayapp");
         params.put("callback_url", zaloPayProps.getCallbackUrl());
         params.put("embed_data", embedData);
         params.put("item", item);
 
-        String data = zaloPayProps.getAppId() + "|" + appTransId + "|" +
-                "user_" + order.getBuyer().getId() + "|" + (long) order.getTotalAmount() + "|" +
-                appTime + "|" + embedData + "|" + item;
+        String data = zaloPayProps.getAppId() + "|" + appTransId + "|"
+                + "user_" + order.getBuyer().getId() + "|" + amount + "|"
+                + appTime + "|" + embedData + "|" + item;
 
         String mac = hmacSHA256(zaloPayProps.getKey1(), data);
         params.put("mac", mac);
 
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
         MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
         params.forEach(body::add);
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-
-        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+        ResponseEntity<Map> response = restTemplate.exchange(
                 zaloPayProps.getEndpoint(),
                 HttpMethod.POST,
                 new HttpEntity<>(body, headers),
-                new ParameterizedTypeReference<>() {
-                }
+                Map.class
         );
 
         Map<String, Object> result = response.getBody();
+        log.info("Create Order Request: {}", params);
+        log.info("ZaloPay Response: {}", result);
 
-
-        // lưu transaction
         Transaction tx = Transaction.builder()
                 .order(order)
-                .amount((long) order.getTotalAmount())
+                .amount(order.getTotalAmount())
                 .appTransId(appTransId)
-                .status(TransactionStatus.PENDING)
+                .paymentStatus(PaymentStatus.PENDING)
+                .refundStatus(RefundStatus.NONE)
                 .paymentMethod(PaymentMethod.ZALO_PAY)
                 .build();
         transactionRepository.save(tx);
 
-        order.setStatus(OrderStatus.PENDING);
-        orderRepository.save(order);
-
         return result;
     }
 
-    /** Callback từ ZaloPay */
+    /** Callback từ ZaloPay → verify MAC + query lại để confirm */
     public Map<String, Object> handleCallback(Map<String, Object> body) throws Exception {
         log.info("Received Callback Body: {}", body);
+
         String data = (String) body.get("data");
         String reqMac = (String) body.get("mac");
 
@@ -113,26 +108,16 @@ public class PaymentService {
         }
 
         ObjectMapper mapper = new ObjectMapper();
-        Map dataMap = mapper.readValue(data, Map.class);
-
+        Map<String, Object> dataMap = mapper.readValue(data, Map.class);
         String appTransId = (String) dataMap.get("app_trans_id");
-        String zpTransId = String.valueOf(dataMap.get("zp_trans_id"));
 
-        transactionRepository.findByAppTransId(appTransId).ifPresent(tx -> {
-            tx.setStatus(TransactionStatus.SUCCESS);
-            tx.setZpTransId(zpTransId);
-            tx.setPaymentDate(LocalDateTime.now());
-            transactionRepository.save(tx);
+        Map<String, Object> queryResult = queryZaloPayOrder(appTransId);
 
-            Order order = tx.getOrder();
-            order.setStatus(OrderStatus.PAID);
-            orderRepository.save(order);
-        });
-
-        return Map.of("return_code", 1, "return_message", "success");
+        return Map.of("return_code", 1, "return_message", "success", "zalopay_result", queryResult);
     }
 
-    /** Truy vấn trạng thái */
+    /** Query trạng thái giao dịch */
+    @Transactional
     public Map<String, Object> queryZaloPayOrder(String appTransId) throws Exception {
         Map<String, String> params = new LinkedHashMap<>();
         params.put("app_id", zaloPayProps.getAppId());
@@ -142,59 +127,99 @@ public class PaymentService {
         String mac = hmacSHA256(zaloPayProps.getKey1(), data);
         params.put("mac", mac);
 
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
         MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
         params.forEach(body::add);
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-
-        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+        ResponseEntity<Map> response = restTemplate.exchange(
                 "https://sb-openapi.zalopay.vn/v2/query",
                 HttpMethod.POST,
                 new HttpEntity<>(body, headers),
-                new ParameterizedTypeReference<>() {
-                }
+                Map.class
         );
 
         Map<String, Object> result = response.getBody();
-
+        log.info("Query Result: {}", result);
 
         transactionRepository.findByAppTransId(appTransId).ifPresent(tx -> {
             assert result != null;
             int returnCode = ((Number) result.get("return_code")).intValue();
-            if (tx.getStatus() == TransactionStatus.PENDING) {
+            if (tx.getPaymentStatus() == PaymentStatus.PENDING) {
                 if (returnCode == 1) {
-                    tx.setStatus(TransactionStatus.SUCCESS);
-                    tx.setPaymentDate(LocalDateTime.now());
-                    tx.getOrder().setStatus(OrderStatus.PAID);
+                    // ✅ Thanh toán thành công
+                    tx.setPaymentStatus(PaymentStatus.SUCCESS);
+                    tx.setZpTransId(String.valueOf(result.get("zp_trans_id")));
+
+                    Object serverTimeObj = result.get("server_time");
+                    if (serverTimeObj != null) {
+                        long serverTimeMillis = Long.parseLong(serverTimeObj.toString());
+                        ZoneId vietnamZone = ZoneId.of("Asia/Ho_Chi_Minh");
+                        LocalDateTime paymentDateVN = Instant.ofEpochMilli(serverTimeMillis)
+                                .atZone(vietnamZone).toLocalDateTime();
+                        tx.setPaymentDate(paymentDateVN);
+                    }
+
+                    // ✅ Cập nhật Order sang PAID
+                    Order order = tx.getOrder();
+                    order.setStatus(OrderStatus.PAID);
+                    orderRepository.save(order);
+
+                    // ✅ Tạo CourseEnrollment cho mỗi OrderItem
+                    order.getItems().forEach(item -> {
+                        boolean exists = courseEnrollmentRepository
+                                .findByUserAndCourse(order.getBuyer(), item.getCourse())
+                                .isPresent();
+                        if (!exists) {
+                            CourseEnrollment enrollment = CourseEnrollment.builder()
+                                    .user(order.getBuyer())
+                                    .course(item.getCourse())
+                                    .status(EnrollmentStatus.ENROLLED)
+                                    .progressPercent(0.0)
+                                    .startedAt(null)
+                                    .completedAt(null)
+                                    .build();
+                            courseEnrollmentRepository.save(enrollment);
+                            log.info("Created enrollment for user={} course={}",
+                                    order.getBuyer().getEmail(),
+                                    item.getCourse().getTitle());
+                        }
+                    });
+
                 } else if (returnCode == 2) {
-                    tx.setStatus(TransactionStatus.FAILED);
-                    tx.setPaymentDate(LocalDateTime.now());
-                    tx.getOrder().setStatus(OrderStatus.CANCELLED);
+                    // ❌ Thanh toán thất bại
+                    tx.setPaymentStatus(PaymentStatus.FAILED);
+                    Order order = tx.getOrder();
+                    order.setStatus(OrderStatus.CANCELLED);
+                    orderRepository.save(order);
                 }
                 transactionRepository.save(tx);
-                orderRepository.save(tx.getOrder());
             }
         });
-        log.info("Received Callback Result: {}", result);
+
         return result;
     }
 
+
     /** Hoàn tiền giao dịch */
     public Map<String, Object> refundOrder(String appTransId) throws Exception {
-        // 1. Truy vấn trạng thái giao dịch trước khi refund
-        Map<String, Object> queryResult = queryZaloPayOrder(appTransId);
-        int returnCode = ((Number) queryResult.get("return_code")).intValue();
+        Transaction tx = transactionRepository.findByAppTransId(appTransId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy giao dịch trong DB"));
 
-        if (returnCode != 1) {
+        if (tx.getPaymentStatus() != PaymentStatus.SUCCESS) {
             throw new IllegalStateException("Không thể hoàn tiền vì giao dịch chưa thành công");
         }
 
-        // 2. Lấy amount và zp_trans_id từ query
-        long amount = ((Number) queryResult.get("amount")).longValue();
-        String zpTransId = String.valueOf(queryResult.get("zp_trans_id"));
+        if (tx.getRefundStatus() == RefundStatus.PROCESSING) {
+            throw new IllegalStateException("Refund đang được xử lý");
+        }
+        if (tx.getRefundStatus() == RefundStatus.COMPLETED) {
+            throw new IllegalStateException("Refund đã hoàn tất");
+        }
 
-        // 3. Sinh m_refund_id theo format yyMMdd_appid_uid
+        long amount = tx.getAmount().longValue();
+        String zpTransId = tx.getZpTransId();
+
         long timestamp = System.currentTimeMillis();
         String uid = timestamp + "" + (111 + new Random().nextInt(888));
         String refundId = new SimpleDateFormat("yyMMdd").format(new Date())
@@ -203,16 +228,9 @@ public class PaymentService {
 
         String refundDescription = "Hoan tien don hang";
 
-        // 4. Tạo MAC = appid|zptransid|amount|description|timestamp
-        String data = zaloPayProps.getAppId() + "|"
-                + zpTransId + "|"
-                + amount + "|"
-                + refundDescription + "|"
-                + timestamp;
-
+        String data = zaloPayProps.getAppId() + "|" + zpTransId + "|" + amount + "|" + refundDescription + "|" + timestamp;
         String mac = hmacSHA256(zaloPayProps.getKey1(), data);
 
-        // 5. Build request
         Map<String, String> params = new LinkedHashMap<>();
         params.put("app_id", zaloPayProps.getAppId());
         params.put("zp_trans_id", zpTransId);
@@ -224,36 +242,44 @@ public class PaymentService {
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-
         MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
         params.forEach(body::add);
 
-        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+        ResponseEntity<Map> response = restTemplate.exchange(
                 "https://sb-openapi.zalopay.vn/v2/refund",
                 HttpMethod.POST,
                 new HttpEntity<>(body, headers),
-                new ParameterizedTypeReference<>() {
-                }
+                Map.class
         );
 
         Map<String, Object> result = response.getBody();
+        log.info("Refund Result: {}", result);
 
+        assert result != null;
+        int refundCode = ((Number) result.get("return_code")).intValue();
+        String zpRefundId = String.valueOf(result.get("refund_id"));
 
-        // 6. Update Transaction + Order
-        transactionRepository.findByAppTransId(appTransId).ifPresent(tx -> {
-            tx.setRefundId(refundId);
-            tx.setStatus(TransactionStatus.REFUND_PROCESSING);
-            transactionRepository.save(tx);
-
-            Order order = tx.getOrder();
-            order.setStatus(OrderStatus.CANCELLED);
-            orderRepository.save(order);
-        });
+        switch (refundCode) {
+            case 1 -> {
+                tx.setRefundStatus(RefundStatus.COMPLETED);
+                tx.setRefundId(refundId);
+                tx.setZpRefundId(zpRefundId);
+                tx.getOrder().setStatus(org.example.elearningbe.common.enumerate.OrderStatus.CANCELLED);
+                orderRepository.save(tx.getOrder());
+            }
+            case 2 -> tx.setRefundStatus(RefundStatus.FAILED);
+            case 3 -> {
+                tx.setRefundStatus(RefundStatus.PROCESSING);
+                tx.setRefundId(refundId);
+                tx.setZpRefundId(zpRefundId);
+            }
+        }
+        transactionRepository.save(tx);
 
         return result;
     }
 
-    /** Kiểm tra trạng thái hoàn tiền */
+    /** Query trạng thái hoàn tiền */
     public Map<String, Object> queryRefundOrder(String refundId) throws Exception {
         long timestamp = System.currentTimeMillis();
 
@@ -262,42 +288,43 @@ public class PaymentService {
         params.put("m_refund_id", refundId);
         params.put("timestamp", String.valueOf(timestamp));
 
-        // mac = app_id|m_refund_id|timestamp
         String data = zaloPayProps.getAppId() + "|" + refundId + "|" + timestamp;
         String mac = hmacSHA256(zaloPayProps.getKey1(), data);
         params.put("mac", mac);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-
         MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
         params.forEach(body::add);
 
-        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+        ResponseEntity<Map> response = restTemplate.exchange(
                 "https://sb-openapi.zalopay.vn/v2/query_refund",
                 HttpMethod.POST,
                 new HttpEntity<>(body, headers),
-                new ParameterizedTypeReference<>() {
-                }
+                Map.class
         );
 
         Map<String, Object> result = response.getBody();
+        log.info("Refund Query Result: {}", result);
 
-        //  Update Transaction nếu thành công
         if (result != null) {
             int returnCode = ((Number) result.get("return_code")).intValue();
             transactionRepository.findByRefundId(refundId).ifPresent(tx -> {
-                if (returnCode == 1) {
-                    tx.setStatus(TransactionStatus.REFUNDED);
-                    tx.setPaymentDate(LocalDateTime.now());
-                    transactionRepository.save(tx);
+                switch (returnCode) {
+                    case 1 -> {
+                        tx.setRefundStatus(RefundStatus.COMPLETED);
+                        tx.getOrder().setStatus(OrderStatus.CANCELLED);
+                        orderRepository.save(tx.getOrder());
+                    }
+                    case 2 -> tx.setRefundStatus(RefundStatus.FAILED);
+                    case 3 -> tx.setRefundStatus(RefundStatus.PROCESSING);
                 }
+                transactionRepository.save(tx);
             });
         }
 
         return result;
     }
-
 
     private String hmacSHA256(String key, String data) throws Exception {
         Mac hmac = Mac.getInstance("HmacSHA256");
@@ -313,4 +340,3 @@ public class PaymentService {
         return hexString.toString();
     }
 }
-

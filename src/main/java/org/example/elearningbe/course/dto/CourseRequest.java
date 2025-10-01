@@ -13,6 +13,7 @@ import org.springframework.lang.Nullable;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 
 
 @Setter                 // <—
@@ -27,7 +28,7 @@ public class CourseRequest implements Serializable {
         @NotNull(message = "Image is required")
         MultipartFile image;
         @NotNull @PositiveOrZero
-        Float price;
+        BigDecimal price;
         @NotBlank(message = "Category is required")
         @EnumValue(name = "category", enumClass = CourseCategory.class, message = "Category must be one of the defined categories")
         String category;

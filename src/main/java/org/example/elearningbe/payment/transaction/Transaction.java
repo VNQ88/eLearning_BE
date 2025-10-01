@@ -4,10 +4,11 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.example.elearningbe.common.BaseEntity;
 import org.example.elearningbe.common.enumerate.PaymentMethod;
-import org.example.elearningbe.common.enumerate.TransactionStatus;
+import org.example.elearningbe.common.enumerate.PaymentStatus;
+import org.example.elearningbe.common.enumerate.RefundStatus;
 import org.example.elearningbe.payment.order.Order;
 
-
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -23,10 +24,10 @@ public class Transaction extends BaseEntity {
     @JoinColumn(name = "order_id", nullable = false)
     private Order order;
 
-    @Column(name = "amount", nullable = false)
-    private Long amount;
+    @Column(name = "amount", nullable = false, precision = 18, scale = 2)
+    private BigDecimal amount;   // dùng BigDecimal để tránh sai số
 
-    @Column(name = "app_trans_id", length = 100, unique = true)
+    @Column(name = "app_trans_id", length = 100, unique = true, nullable = false)
     private String appTransId;   // Mã giao dịch merchant sinh ra (yyMMdd_orderId)
 
     @Column(name = "zp_trans_id", length = 100)
@@ -39,8 +40,12 @@ public class Transaction extends BaseEntity {
     private String zpRefundId;   // Mã refund do ZaloPay trả về (nếu có)
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 30)
-    private TransactionStatus status; // PENDING, SUCCESS, FAILED, REFUND_PROCESSING, REFUNDED
+    @Column(name = "payment_status", nullable = false, length = 30)
+    private PaymentStatus paymentStatus; // PENDING, SUCCESS, FAILED
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "refund_status", nullable = false, length = 30)
+    private RefundStatus refundStatus;   // NONE, PROCESSING, COMPLETED, FAILED
 
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_method", nullable = false, length = 30)

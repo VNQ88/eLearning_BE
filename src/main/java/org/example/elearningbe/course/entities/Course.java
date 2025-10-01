@@ -8,6 +8,8 @@ import org.example.elearningbe.user.entities.User;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.LastModifiedBy;
 
+import java.math.BigDecimal;
+
 
 @Entity
 @Table(name = "courses")
@@ -26,8 +28,8 @@ public class Course extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String image;
 
-    @Column(nullable = false, columnDefinition = "FLOAT DEFAULT 0")
-    private float price;
+    @Column(name = "price", nullable = false, precision = 15, scale = 2)
+    private BigDecimal price = BigDecimal.ZERO;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "category", nullable = false, length = 50)

@@ -5,6 +5,8 @@ import lombok.*;
 import org.example.elearningbe.common.BaseEntity;
 import org.example.elearningbe.course.entities.Course;
 
+import java.math.BigDecimal;
+
 @Entity
 @Table(name = "order_item")
 @Getter
@@ -21,8 +23,8 @@ public class OrderItem extends BaseEntity {
     @JoinColumn(name = "course_id")
     private Course course;
 
-    @Column(name = "price_at_purchase", nullable = false)
-    private float priceAtPurchase;
+    @Column(name = "price_at_purchase", nullable = false, precision = 15, scale = 2)
+    private BigDecimal priceAtPurchase = BigDecimal.ZERO;
 }
 
 

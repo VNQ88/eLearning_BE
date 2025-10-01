@@ -70,6 +70,14 @@ public class LessonController {
                 lessonService.getLessons(pageNo, pageSize, courseId, chapterId, type, title));
     }
 
+    @GetMapping("/course/{courseId}")
+    @Operation(summary = "Get all lessons for a specific course", description = "Retrieve all lessons associated with a specific course by its ID")
+    public ResponseData<?> getLessonsByCourse(@PathVariable Long courseId,
+                                              @RequestParam(defaultValue = "0") int pageNo,
+                                              @RequestParam(defaultValue = "10") int pageSize) {
+        return new ResponseData<>(HttpStatus.OK.value(), "Lessons for course", lessonService.getLessonsByCourse(courseId, pageNo, pageSize));
+    }
+
     @PreAuthorize("hasAnyAuthority('ADMIN', 'TEACHER')")
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete a lesson", description = "Delete a lesson by ID and remove its resources from MinIO")
