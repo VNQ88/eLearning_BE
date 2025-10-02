@@ -4,6 +4,7 @@ import org.example.elearningbe.course.CourseRepository;
 import org.example.elearningbe.course.entities.Course;
 import org.example.elearningbe.course_tracking.course_enrollment.CourseEnrollmentRepository;
 import org.example.elearningbe.exception.ResourceNotFoundException;
+import org.example.elearningbe.mapper.CourseMapper;
 import org.example.elearningbe.payment.cart.dto.CartItemResponse;
 import org.example.elearningbe.payment.cart.dto.CartResponse;
 import org.example.elearningbe.user.UserRepository;
@@ -22,7 +23,7 @@ public class CartService {
     private final CourseRepository courseRepository;
     private final UserRepository userRepository;
     private final CourseEnrollmentRepository courseEnrollmentRepository;
-
+    private final CourseMapper courseMapper;
     private User getCurrentUser() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByEmail(email)
@@ -102,8 +103,7 @@ public class CartService {
         List<CartItemResponse> items = cart.getItems().stream()
                 .map(i -> new CartItemResponse(
                         i.getId(),
-                        i.getCourse().getId(),
-                        i.getCourse().getTitle(),
+                        courseMapper.mapToCourseResponse(i.getCourse()),
                         i.getCourse().getPrice(),
                         i.getQuantity()
                 ))

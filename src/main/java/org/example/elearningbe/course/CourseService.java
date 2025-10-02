@@ -13,6 +13,7 @@ import org.example.elearningbe.course.entities.Course;
 import org.example.elearningbe.exception.ResourceNotFoundException;
 import org.example.elearningbe.integration.minio.MinioChannel;
 import org.example.elearningbe.integration.minio.dto.UploadResult;
+import org.example.elearningbe.mapper.CourseMapper;
 import org.example.elearningbe.payment.order.OrderItemRepository;
 import org.example.elearningbe.user.UserRepository;
 import org.example.elearningbe.user.entities.User;
@@ -35,11 +36,12 @@ public class CourseService {
     private final CourseRepository courseRepository;
     private final UserRepository userRepository;
     private final OrderItemRepository orderItemRepository;
+    private final CourseMapper courseMapper;
 
     /* ================== CREATE ================== */
     public CourseResponse createCourse(@Valid CourseRequest request) throws Exception {
         log.info("Create course: {}", request.getTitle());
-        Course course = mapToCourse(request);
+        Course course = courseMapper.mapToCourse(request);
 
         // Xác định owner
         User owner = resolveOwner(request.getOwnerEmail());
@@ -50,14 +52,14 @@ public class CourseService {
         course.setImage(result.objectKey()); // CHỈ lưu objectKey
 
         courseRepository.save(course);
-        return mapToCourseResponse(course); // convert objectKey -> presignedUrl khi trả ra
+        return courseMapper.mapToCourseResponse(course); // convert objectKey -> presignedUrl khi trả ra
     }
 
     /* ================== LIST ================== */
     public PageResponse<?> getAllCourses(int pageNo, @Min(10) int pageSize) {
         Page<Course> page = courseRepository.findAll(PageRequest.of(pageNo, pageSize));
         List<CourseResponse> items = page.getContent().stream()
-                .map(this::mapToCourseResponse)
+                .map(courseMapper::mapToCourseResponse)
                 .toList();
 
         return PageResponse.builder()
@@ -72,7 +74,7 @@ public class CourseService {
     public CourseResponse getCourse(@Min(1) long courseId) {
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Course not found with id: " + courseId));
-        return mapToCourseResponse(course);
+        return courseMapper.mapToCourseResponse(course);
     }
 
     /* ================== SEARCH BY TITLE ================== */
@@ -82,7 +84,7 @@ public class CourseService {
         List<CourseResponse> items = page.getContent().stream()
                 .map(course -> {
                     try {
-                        return mapToCourseResponse(course);
+                        return courseMapper.mapToCourseResponse(course);
                     } catch (Exception e) {
                         throw new RuntimeException(e);
                     }
@@ -143,7 +145,7 @@ public class CourseService {
         Page<Course> page = courseRepository.findAll(spec, pageable);
 
         List<CourseResponse> items = page.getContent().stream()
-                .map(this::mapToCourseResponse)
+                .map(courseMapper::mapToCourseResponse)
                 .toList();
 
         return PageResponse.<List<CourseResponse>>builder()
@@ -181,7 +183,7 @@ public class CourseService {
         course.setCategory(CourseCategory.fromString(request.getCategory()));
 
         courseRepository.save(course);
-        return mapToCourseResponse(course);
+        return courseMapper.mapToCourseResponse(course);
     }
 
     /* ================== HELPERS ================== */
@@ -193,30 +195,6 @@ public class CourseService {
         String currentEmail = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByEmail(currentEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Current user not found"));
-    }
-
-    /** Map entity -> DTO: chuyển imageObjectKey -> presigned GET URL (TTL = default). */
-    private CourseResponse mapToCourseResponse(Course course) {
-        String presignedUrl = null;
-        String key = course.getImage(); // đang lưu objectKey trong DB
-        if (StringUtils.hasText(key)) {
-            try {
-                // TTL = 0 -> MinioChannel tự dùng cấu hình presignExpirySeconds
-                presignedUrl = minioChannel.presignedGetUrl(key, 0);
-            } catch (Exception e) {
-                log.warn("Không tạo được presignedUrl cho key {}: {}", key, e.getMessage());
-            }
-        }
-        return new CourseResponse(
-                course.getId(),
-                course.getTitle(),
-                course.getDescription(),
-                presignedUrl,                    // trả URL tạm cho FE
-                course.getCategory().name(),
-                course.getPrice(),
-                course.getDuration(),
-                course.getOwner() != null ? course.getOwner().getEmail() : null
-        );
     }
 
     @Transactional(readOnly = true)
@@ -234,7 +212,7 @@ public class CourseService {
         );
 
         List<CourseResponse> items = page.getContent().stream()
-                .map(this::mapToCourseResponse)
+                .map(courseMapper::mapToCourseResponse)
                 .toList();
 
         return PageResponse.<List<CourseResponse>>builder()
@@ -245,14 +223,4 @@ public class CourseService {
                 .build();
     }
 
-    /** Map request -> entity (chưa set owner & image). */
-    public Course mapToCourse(CourseRequest request) {
-        return Course.builder()
-                .title(request.getTitle().strip())
-                .description(request.getDescription().trim())
-                .category(CourseCategory.fromString(request.getCategory().strip()))
-                .price(request.getPrice())
-                .duration(request.getDuration())
-                .build();
-    }
 }

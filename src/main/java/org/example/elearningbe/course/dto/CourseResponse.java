@@ -10,7 +10,9 @@ public record CourseResponse(
         String category,
         BigDecimal price,
         Integer duration,
-        String ownerEmail
+        String ownerEmail,
+        String ownerAvatar,
+        String ownerName
 ){
 
 }
