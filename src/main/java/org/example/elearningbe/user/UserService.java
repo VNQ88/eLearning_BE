@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import org.example.elearningbe.common.PageResponse;
 import org.example.elearningbe.exception.ResourceNotFoundException;
 import org.example.elearningbe.mapper.UserMapper;
+import org.example.elearningbe.role.RoleRepository;
+import org.example.elearningbe.role.entities.Role;
 import org.example.elearningbe.user.dto.ChangePasswordRequest;
 import org.example.elearningbe.user.dto.UserResponse;
 import org.example.elearningbe.user.entities.User;
@@ -25,6 +27,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
+    private final RoleRepository roleRepository;
 
     public PageResponse<?> getAllUsers(int pageNo, @Min(10) int pageSize) {
         Page<User> userPage = userRepository.findAll(PageRequest.of(pageNo, pageSize));
@@ -76,6 +79,18 @@ public class UserService {
             throw new IllegalArgumentException("Old password is incorrect");
         }
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+    }
+
+    public void becomeTeacher(@Min(1) long userId) {
+        User user = getUserById(userId);
+        Role teacherRole = roleRepository.findByName("TEACHER")
+                .orElseThrow(() -> new ResourceNotFoundException("Role TEACHER not found"));
+        if (user.getRoles().contains(teacherRole)) {
+            throw new IllegalArgumentException("User is already a teacher");
+        }
+
+        user.getRoles().add(teacherRole);
         userRepository.save(user);
     }
 }

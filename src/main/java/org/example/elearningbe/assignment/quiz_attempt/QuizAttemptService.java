@@ -176,7 +176,7 @@ public class QuizAttemptService {
         User user = userRepository.findByEmail(currentEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        Page<QuizAttempt> page = quizAttemptRepository.findByQuizIdAndUserId(
+        Page<QuizAttempt> page = quizAttemptRepository.findByQuizIdAndUserIdAndSubmittedAtIsNotNull(
                 quizId,
                 user.getId(),
                 PageRequest.of(pageNo, pageSize, Sort.by(Sort.Direction.DESC, "submittedAt"))

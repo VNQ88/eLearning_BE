@@ -6,7 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface QuizAttemptRepository extends JpaRepository<QuizAttempt, Long> {
-    Page<QuizAttempt> findByQuizIdAndUserId(Long quizId, Long userId, Pageable pageable);
+    Page<QuizAttempt> findByQuizIdAndUserIdAndSubmittedAtIsNotNull(Long quizId, Long userId, Pageable pageable);
 
     Page<QuizAttempt> findByQuizId(Long quizId, Pageable pageable);
 

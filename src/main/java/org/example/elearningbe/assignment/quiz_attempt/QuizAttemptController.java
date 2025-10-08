@@ -18,7 +18,7 @@ public class QuizAttemptController {
     private final QuizAttemptService quizAttemptService;
 
     // ✅ Bắt đầu attempt mới
-    @PostMapping("/start")
+    @GetMapping("/start")
     @Operation(summary = "Start a new quiz attempt and return questions")
     public ResponseData<?> startAttempt(@RequestParam Long quizId) {
         return new ResponseData<>(

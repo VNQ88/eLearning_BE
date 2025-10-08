@@ -80,7 +80,7 @@ public class PaymentService {
 
         Map<String, Object> result = response.getBody();
         log.info("Create Order Request: {}", params);
-        log.info("ZaloPay Response: {}", result);
+
 
         Transaction tx = Transaction.builder()
                 .order(order)
@@ -91,7 +91,9 @@ public class PaymentService {
                 .paymentMethod(PaymentMethod.ZALO_PAY)
                 .build();
         transactionRepository.save(tx);
-
+        assert result != null;
+        result.put("app_trans_id", appTransId);
+        log.info("ZaloPay Response: {}", result);
         return result;
     }
 

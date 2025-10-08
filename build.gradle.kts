@@ -66,7 +66,8 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-mail:3.5.3")
     // https://mvnrepository.com/artifact/org.springframework.ai/spring-ai-starter-model-openai
     implementation("org.springframework.ai:spring-ai-starter-model-openai:1.0.1")
-
+    // https://mvnrepository.com/artifact/org.springframework.ai/spring-ai-starter-model-chat-memory-repository-jdbc
+    implementation("org.springframework.ai:spring-ai-starter-model-chat-memory-repository-jdbc:1.0.1")
     // google api client for app
     implementation("com.google.api-client:google-api-client:2.8.1")
     implementation("com.google.http-client:google-http-client-jackson2:1.47.1")

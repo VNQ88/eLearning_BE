@@ -60,4 +60,14 @@ public class UserController {
         userService.changePassword(request);
         return new ResponseData<>(HttpStatus.OK.value(), "Change password successful");
     }
+
+    // update user role to teacher (add role teacher)
+    @PreAuthorize("hasAuthority('ADMIN')")
+    @PostMapping("/{userId}/become-teacher")
+    @Operation(summary = "Update user role to teacher", description = "Send a request via this API to update user role to teacher")
+    public ResponseData<?> becomeTeacher(@PathVariable @Min(1) long userId) {
+        log.info("Request update user role to teacher, userId={}", userId);
+        userService.becomeTeacher(userId);
+        return new ResponseData<>(HttpStatus.OK.value(), "Update user role to teacher successful");
+    }
 }
