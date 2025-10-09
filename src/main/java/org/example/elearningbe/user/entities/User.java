@@ -29,7 +29,7 @@ public class User extends BaseEntity implements UserDetails, Principal {
     @Column(length = 100, nullable = false, unique = true)
     String email;
 
-    @Column(nullable = false)
+    @Column()
     String password;
 
     @Column()

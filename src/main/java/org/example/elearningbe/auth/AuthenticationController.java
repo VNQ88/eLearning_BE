@@ -167,7 +167,8 @@ public class AuthenticationController {
         );
 
         // 3. Lưu user vào DB
-        user = userRepository.save(user);
+        if (!user.isEnabled()) user.setEnabled(true);
+        userRepository.save(user);
 
         // 4. Sinh JWT access token và refresh token
         UserDetails userDetails = userDetailServiceImpl.loadUserByUsername(user.getEmail());
