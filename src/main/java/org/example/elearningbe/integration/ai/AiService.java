@@ -4,8 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.elearningbe.assignment.quiz_attempt.dto.response.ExplanationDto;
 import org.example.elearningbe.common.PageResponse;
-import org.example.elearningbe.integration.ai.dto.ChatResponseDto;
-import org.example.elearningbe.integration.ai.dto.HistoryItemDto;
+import org.example.elearningbe.integration.ai.dto.ChatDto;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.repository.jdbc.JdbcChatMemoryRepository;
@@ -59,7 +58,7 @@ public class AiService {
     /**
      * Chat kèm file (ảnh/pdf/txt); KHÔNG lưu file – chỉ chuyển thành Media để gửi 1 lần
      */
-    public ChatResponseDto chat(String userEmail, String message, List<MultipartFile> files) {
+    public ChatDto chat(String userEmail, String message, List<MultipartFile> files) {
 
         List<Media> medias = new ArrayList<>();
         if (files != null) {
@@ -117,10 +116,10 @@ public class AiService {
                 .call()
                 .content();
 
-        return new ChatResponseDto(userEmail, answer);
+        return new ChatDto("ASSISTANT", answer);
     }
 
-    public PageResponse<List<HistoryItemDto>> getHistory(String conversationId, int page, int size) {
+    public PageResponse<List<ChatDto>> getHistory(String conversationId, int page, int size) {
         if (page < 0) page = 0;
         if (size <= 0) size = 20;
 
@@ -130,14 +129,14 @@ public class AiService {
         int from  = Math.max(0, Math.min(page * size, total));
         int to    = Math.max(from, Math.min(from + size, total));
 
-        List<HistoryItemDto> items = all.subList(from, to)
+        List<ChatDto> items = all.subList(from, to)
                 .stream()
                 .map(this::toHistoryItem)
                 .collect(Collectors.toList());
 
         int totalPage = (int) Math.ceil(total / (double) size);
 
-        return PageResponse.<List<HistoryItemDto>>builder()
+        return PageResponse.<List<ChatDto>>builder()
                 .pageNo(page)
                 .pageSize(size)
                 .totalPage(totalPage)
@@ -145,7 +144,7 @@ public class AiService {
                 .build();
     }
 
-    private HistoryItemDto toHistoryItem(Message m) {
+    private ChatDto toHistoryItem(Message m) {
         // role: USER | ASSISTANT | SYSTEM
         String role = m.getMessageType().name();
         // text: ưu tiên getText(); nếu null thì join các Content.text
@@ -163,7 +162,7 @@ public class AiService {
 //            }
 //        }
 
-        return new HistoryItemDto(role, text);
+        return new ChatDto(role, text);
     }
 
     public void clearHistory(String userEmail) {
