@@ -7,6 +7,7 @@ import org.example.elearningbe.chapter.entities.Chapter;
 import org.example.elearningbe.common.BaseEntity;
 import org.example.elearningbe.common.enumerate.LessonType;
 import org.example.elearningbe.course.entities.Course;
+import org.example.elearningbe.security.AesEncryptor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,10 +27,12 @@ public class Lesson extends BaseEntity {
     private String description;
 
     // optional thumbnail (ảnh minh họa cho bài học)
+    @Convert (converter = AesEncryptor.class)
     @Column(columnDefinition = "TEXT")
     private String imageObjectKey;
 
     // objectKey duy nhất cho tài nguyên (video hoặc document)
+    @Convert(converter = AesEncryptor.class)
     @Column(columnDefinition = "TEXT", nullable = false)
     private String resourceObjectKey;
 

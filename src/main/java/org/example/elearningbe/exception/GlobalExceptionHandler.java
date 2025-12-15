@@ -94,7 +94,7 @@ public class GlobalExceptionHandler {
                 errorResponse.setMessage(message);
             }
         }
-        log.error("ValidationException: ", e);
+//        log.error("ValidationException: ", e);
         return errorResponse;
     }
 
@@ -132,7 +132,7 @@ public class GlobalExceptionHandler {
         errorResponse.setStatus(NOT_FOUND.value());
         errorResponse.setError(NOT_FOUND.getReasonPhrase());
         errorResponse.setMessage(e.getMessage());
-        log.error("ResourceNotFoundException: ", e);
+//        log.error("ResourceNotFoundException: ", e);
         return errorResponse;
     }
 
@@ -169,7 +169,7 @@ public class GlobalExceptionHandler {
         errorResponse.setStatus(CONFLICT.value());
         errorResponse.setError(CONFLICT.getReasonPhrase());
         errorResponse.setMessage(e.getMessage());
-        log.error("InvalidDataException: ", e);
+//        log.error("InvalidDataException: ", e);
         return errorResponse;
     }
 

@@ -1,8 +1,8 @@
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/elearning_kma
-    username: ${POSTGRES_USER:postgres}
-    password: ${POSTGRES_PASSWORD:postgres}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10
@@ -52,7 +52,7 @@ spring:
         base-url: https://generativelanguage.googleapis.com
         completions-path: /v1beta/openai/chat/completions
         options:
-          model: gemini-2.0-flash
+          model: gemini-2.5-flash
           temperature: 0.7
     chat:
       memory:
@@ -61,6 +61,8 @@ spring:
             initialize-schema: always
 
 application:
+  encryption:
+    key: ${APP_ENCRYPTION_KEY}
   jwt:
     signer-key: ${JWT_SECRET_KEY:oQYBztyZyBdLMvdfBLD8RhS3ynD7iwnVnoT8DUJe+XzQh7jignRqFVFLFPbrWaoo}
     valid-duration: 36000 # in seconds
@@ -86,6 +88,6 @@ application:
     key1: PcY4iZIKFCIdgZvA6ueMcMHHUbRLYjPL
     key2: kLtgPl8HHhfvMuDHPwKfgfsY4Ydm9eIz
     endpoint: https://sb-openapi.zalopay.vn/v2/create
-    callback-url: https://893704a67416.ngrok-free.app/api/v1/payment/callback
+    callback-url: https://92f894cfeab2.ngrok-free.app/api/v1/payment/callback
 server:
   port: 8080

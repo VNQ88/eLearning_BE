@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.example.elearningbe.assignment.quiz.Quiz;
 import org.example.elearningbe.common.BaseEntity;
+import org.example.elearningbe.security.AesEncryptor;
 
 import java.util.List;
 
@@ -17,6 +18,7 @@ import java.util.List;
 @AllArgsConstructor
 public class Question extends BaseEntity {
 
+    @Convert(converter = AesEncryptor.class)
     @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
 

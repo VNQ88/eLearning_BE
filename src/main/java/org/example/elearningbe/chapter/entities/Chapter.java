@@ -10,6 +10,7 @@ import org.example.elearningbe.course.entities.Course;
 @Setter
 @Entity
 public class Chapter extends BaseEntity {
+
     @Column(length = 100, nullable = false)
     private String title;
 

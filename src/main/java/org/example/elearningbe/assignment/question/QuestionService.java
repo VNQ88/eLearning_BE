@@ -1,6 +1,7 @@
 package org.example.elearningbe.assignment.question;
 
 import lombok.RequiredArgsConstructor;
+import org.example.elearningbe.assignment.question.dto.AddQuestionsRequest;
 import org.example.elearningbe.assignment.question.dto.ChoiceResponse;
 import org.example.elearningbe.assignment.question.dto.QuestionRequest;
 import org.example.elearningbe.assignment.question.dto.QuestionResponse;
@@ -47,6 +48,37 @@ public class QuestionService {
                 .toList();
 
         return toResponse(question, toChoiceResponses(choices));
+    }
+
+    @Transactional
+    public List<QuestionResponse> addQuestionsToQuiz(AddQuestionsRequest request) {
+        Quiz quiz = quizRepository.findById(request.getQuizId())
+                .orElseThrow(() -> new ResourceNotFoundException("Quiz not found"));
+
+        return request.getQuestions().stream().map(qReq -> {
+
+            // Tạo question
+            Question question = Question.builder()
+                    .content(qReq.getContent())
+                    .type(qReq.getType())
+                    .quiz(quiz)
+                    .build();
+            questionRepository.save(question);
+
+            // Tạo choice
+            List<Choice> choices = qReq.getChoices().stream()
+                    .map(c -> Choice.builder()
+                            .content(c.getContent())
+                            .isCorrect(c.getIsCorrect())
+                            .question(question)
+                            .build())
+                    .toList();
+
+            choiceRepository.saveAll(choices);
+
+            return toResponse(question, toChoiceResponses(choices));
+
+        }).toList();
     }
 
     // ================= UPDATE =================

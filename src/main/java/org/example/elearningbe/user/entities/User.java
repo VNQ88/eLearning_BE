@@ -5,6 +5,7 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.example.elearningbe.common.BaseEntity;
 import org.example.elearningbe.role.entities.Role;
+import org.example.elearningbe.security.AesEncryptor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -23,6 +24,7 @@ import java.util.Set;
 @AllArgsConstructor
 @Table(name = "users") // đổi từ "user" → "users"
 public class User extends BaseEntity implements UserDetails, Principal {
+    @Convert(converter = AesEncryptor.class)
     @Column(length = 100, nullable = false)
     String fullName;
 

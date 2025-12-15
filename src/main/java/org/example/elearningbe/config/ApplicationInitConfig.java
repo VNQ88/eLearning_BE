@@ -13,7 +13,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableAsync;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.HashSet;
 
@@ -38,6 +37,12 @@ public class ApplicationInitConfig {
                 Role role = Role.builder().name("ADMIN").build();
                 roleRepository.save(role);
                 log.info("Role 'ADMIN' has been created");
+            }
+
+            if ((roleRepository.findByName("TEACHER").isEmpty())) {
+                Role role = Role.builder().name("TEACHER").build();
+                roleRepository.save(role);
+                log.info("Role 'TEACHER' has been created");
             }
 
             if ((roleRepository.findByName("STUDENT").isEmpty())) {

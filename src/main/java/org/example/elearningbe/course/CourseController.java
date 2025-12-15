@@ -29,7 +29,7 @@ public class CourseController {
     @Operation(summary = "Create new course", description = "Create course with image upload (multipart/form-data)")
     @PreAuthorize("hasAnyAuthority('ADMIN', 'TEACHER')")
     public ResponseData<?> createCourse(@Valid @ModelAttribute CourseRequest request) throws Exception {
-        log.info("Request to create course with title: {}", request.getTitle());
+//        log.info("Request to create course with title: {}", request.getTitle());
         CourseResponse courseResponse = courseService.createCourse(request);
         return new ResponseData<>(HttpStatus.OK.value(), "Course created successfully", courseResponse);
     }
@@ -38,7 +38,7 @@ public class CourseController {
     @Operation(summary = "Get all courses", description = "Get paginated courses")
     public ResponseData<?> getAllCourses(@RequestParam(defaultValue = "0", required = false) int pageNo,
                                          @Min(10) @RequestParam(defaultValue = "20", required = false) int pageSize) {
-        log.info("Request to get all courses");
+//        log.info("Request to get all courses");
         PageResponse<?> courses = courseService.getAllCourses(pageNo, pageSize);
         return new ResponseData<>(HttpStatus.OK.value(), "courses", courses);
     }
@@ -46,7 +46,7 @@ public class CourseController {
     @GetMapping("/get/{courseId}")
     @Operation(summary = "Get course detail", description = "Get course detail by courseId")
     public ResponseData<?> getCourse(@PathVariable @Min(1) long courseId) {
-        log.info("Request to get course detail, courseId={}", courseId);
+//        log.info("Request to get course detail, courseId={}", courseId);
         CourseResponse courseResponse = courseService.getCourse(courseId);
         return new ResponseData<>(HttpStatus.OK.value(), "course", courseResponse);
     }
@@ -56,7 +56,7 @@ public class CourseController {
     public ResponseData<?> getCourseByTitle(@RequestParam String title,
                                             @RequestParam (defaultValue = "0", required = false) Integer pageNo,
                                             @RequestParam(defaultValue = "20", required = false) @Min(10) Integer pageSize) {
-        log.info("Request to get course by title: {}", title);
+//        log.info("Request to get course by title: {}", title);
         return new ResponseData<>(HttpStatus.OK.value(), "course", courseService.getCourseByTitle(title, pageNo, pageSize));
     }
 
@@ -84,7 +84,7 @@ public class CourseController {
     @Operation(summary = "Update course", description = "Update course (optionally replace image) with multipart/form-data")
     public ResponseData<?> updateCourse(@PathVariable @Min(1) long courseId,
                                         @Valid @ModelAttribute CourseRequest request) throws Exception {
-        log.info("Request to update course with id: {}, title: {}", courseId, request.getTitle());
+//        log.info("Request to update course with id: {}, title: {}", courseId, request.getTitle());
         CourseResponse courseResponse = courseService.updateCourse(courseId, request);
         return new ResponseData<>(HttpStatus.OK.value(), "Course updated successfully", courseResponse);
     }

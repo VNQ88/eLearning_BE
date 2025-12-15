@@ -2,6 +2,7 @@ package org.example.elearningbe.assignment.question;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.example.elearningbe.assignment.question.dto.AddQuestionsRequest;
 import org.example.elearningbe.assignment.question.dto.QuestionRequest;
 import org.example.elearningbe.common.respone.ResponseData;
 import org.springframework.http.HttpStatus;
@@ -24,6 +25,15 @@ public class QuestionController {
                 "Question created successfully",
                 questionService.createQuestion(request));
     }
+    @PreAuthorize("hasAnyAuthority('ADMIN','TEACHER')")
+    @PostMapping("/batch")
+    public ResponseData<?> addQuestionsToQuiz(@RequestBody AddQuestionsRequest request) {
+        return new ResponseData<>(HttpStatus.OK.value(),
+                "Questions added to quiz",
+                questionService.addQuestionsToQuiz(request));
+    }
+
+
 
     // ✅ Lấy chi tiết question kèm choices
     @GetMapping("/{questionId}")

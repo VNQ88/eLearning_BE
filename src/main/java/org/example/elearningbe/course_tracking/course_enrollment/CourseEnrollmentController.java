@@ -28,7 +28,7 @@ public class CourseEnrollmentController {
     @GetMapping("/{courseId}")
     @Operation(summary = "Get enrollment detail for a course")
     public ResponseData<EnrollmentDetailResponse> getEnrollmentDetail(@PathVariable Long courseId) {
-        log.info("Request to get enrollment detail for course {}", courseId);
+//        log.info("Request to get enrollment detail for course {}", courseId);
         return new ResponseData<>(HttpStatus.OK.value(), "Enrollment detail",
                 enrollmentService.getEnrollmentDetail(courseId));
     }

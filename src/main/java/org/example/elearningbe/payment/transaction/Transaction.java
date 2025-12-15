@@ -7,6 +7,7 @@ import org.example.elearningbe.common.enumerate.PaymentMethod;
 import org.example.elearningbe.common.enumerate.PaymentStatus;
 import org.example.elearningbe.common.enumerate.RefundStatus;
 import org.example.elearningbe.payment.order.Order;
+import org.example.elearningbe.security.AesEncryptor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -30,12 +31,15 @@ public class Transaction extends BaseEntity {
     @Column(name = "app_trans_id", length = 100, unique = true, nullable = false)
     private String appTransId;   // Mã giao dịch merchant sinh ra (yyMMdd_orderId)
 
+    @Convert(converter = AesEncryptor.class)
     @Column(name = "zp_trans_id", length = 100)
     private String zpTransId;    // Mã giao dịch do ZaloPay trả về
 
+    @Convert(converter = AesEncryptor.class)
     @Column(name = "refund_id", length = 100)
     private String refundId;     // Mã refund do merchant sinh
 
+    @Convert(converter = AesEncryptor.class)
     @Column(name = "zp_refund_id", length = 100)
     private String zpRefundId;   // Mã refund do ZaloPay trả về (nếu có)
 
