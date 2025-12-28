@@ -12,6 +12,9 @@ public class MinioProps {
     private String endpoint;
 
     @NotBlank
+    private String serverUrl;
+
+    @NotBlank
     private String accessKey;
 
     @NotBlank

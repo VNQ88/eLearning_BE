@@ -44,7 +44,8 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-ChangeMe!123}
-      MINIO_SERVER_URL: ${MINIO_ENDPOINT:-http://localhost:9000}
+      MINIO_SERVER_URL: ${MINIO_SERVER_URL:-https://minio.social.io.vn}
+      MINIO_BROWSER_REDIRECT_URL: ${MINIO_BROWSER_REDIRECT_URL:-https://console.social.io.vn}
       MINIO_KMS_SECRET_KEY: ${MINIO_KMS_SECRET_KEY}
       MINIO_KMS_AUTO_ENCRYPTION: "on"
 
@@ -54,13 +55,30 @@ services:
       # (tùy chọn) HTTPS:
       # - ./certs:/root/.minio/certs:ro
     ports:
-      - "9000:9000"   # API S3
-      - "9001:9001"   # Web console
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
 #    healthcheck:
 #      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
 #      interval: 30s
 #      timeout: 5s
 #      retries: 3
+    networks:
+      - backend
+
+  application:
+    image: vnq88/e-learning-be
+    container_name: application
+    restart: always
+    depends_on:
+      - postgres
+      - redis
+      - minio
+    ports:
+      - "127.0.0.1:8080:8080"
+    env_file:
+      - .env
+    environment:
+      SERVER_FORWARD_HEADERS_STRATEGY: framework
     networks:
       - backend
 

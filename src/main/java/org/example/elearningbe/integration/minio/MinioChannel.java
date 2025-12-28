@@ -1,14 +1,27 @@
 package org.example.elearningbe.integration.minio;
 
-import io.minio.*;
+import io.minio.BucketExistsArgs;
+import io.minio.GetObjectArgs;
+import io.minio.GetObjectResponse;
+import io.minio.GetPresignedObjectUrlArgs;
+import io.minio.MakeBucketArgs;
+import io.minio.MinioClient;
+import io.minio.PutObjectArgs;
+import io.minio.RemoveObjectArgs;
+import io.minio.RemoveObjectsArgs;
+import io.minio.Result;
+import io.minio.SetBucketPolicyArgs;
+import io.minio.StatObjectArgs;
+import io.minio.StatObjectResponse;
+import io.minio.errors.ErrorResponseException;
+import io.minio.http.Method;
 import io.minio.messages.DeleteError;
 import io.minio.messages.DeleteObject;
 import jakarta.annotation.PostConstruct;
 import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.example.elearningbe.integration.minio.dto.UploadResult;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -18,33 +31,62 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URLConnection;
+import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
-@Component
-@RequiredArgsConstructor
-@EnableConfigurationProperties(MinioProps.class)
 @Slf4j
+@Component
+@EnableConfigurationProperties(MinioProps.class)
 public class MinioChannel {
 
+    private static final int MAX_PRESIGN_SECONDS = (int) Duration.ofDays(7).getSeconds(); // 604800
+
     private final MinioProps props;
-    private final MinioClient minioClient;
-    private final MinioProps minioProps;
-    @PostConstruct
-    private void init() {
-        createBucketIfNeeded(props.getBucket(), props.isMakeBucketPublic());
+
+    /**
+     * Client nội bộ (trong docker network): endpoint = http://minio:9000
+     * Dùng cho put/get/stat/remove...
+     */
+    private final MinioClient internalClient;
+
+    /**
+     * Client public để ký presigned URL: endpoint = https://minio.social.io.vn (hoặc domain public bạn dùng)
+     * Dùng CHỈ cho getPresignedObjectUrl(...)
+     */
+    private final MinioClient presignClient;
+
+    public MinioChannel(
+            MinioProps props,
+            @Qualifier("minioInternalClient") MinioClient internalClient,
+            @Qualifier("minioPresignClient") MinioClient presignClient
+    ) {
+        this.props = props;
+        this.internalClient = internalClient;
+        this.presignClient = presignClient;
     }
 
-    @SneakyThrows
-    private void createBucketIfNeeded(final String name, boolean makePublic) {
-        boolean exists = minioClient.bucketExists(
+    @PostConstruct
+    public void init() {
+        try {
+            createBucketIfNeeded(props.getBucket(), props.isMakeBucketPublic());
+        } catch (Exception e) {
+            log.error("MinIO init failed: {}", e.getMessage(), e);
+            throw new IllegalStateException("MinIO init failed", e);
+        }
+    }
+
+    private void createBucketIfNeeded(final String name, boolean makePublic) throws Exception {
+        boolean exists = internalClient.bucketExists(
                 BucketExistsArgs.builder().bucket(name).build()
         );
+
         if (!exists) {
-            minioClient.makeBucket(MakeBucketArgs.builder().bucket(name).build());
+            internalClient.makeBucket(MakeBucketArgs.builder().bucket(name).build());
+
             if (makePublic) {
-                final var policy = """
+                final String policy = """
                     {
                       "Version": "2012-10-17",
                       "Statement": [{
@@ -55,7 +97,8 @@ public class MinioChannel {
                       }]
                     }
                     """.formatted(name);
-                minioClient.setBucketPolicy(
+
+                internalClient.setBucketPolicy(
                         SetBucketPolicyArgs.builder().bucket(name).config(policy).build()
                 );
                 log.warn("Bucket {} đã được đặt PUBLIC (GET). Cân nhắc để private cho an toàn.", name);
@@ -82,13 +125,20 @@ public class MinioChannel {
                 ? "file.bin"
                 : originalName.strip().replace("\\", "/");
         String nameOnly = clean.substring(clean.lastIndexOf('/') + 1);
+
         String prefix = props.getKeyPrefix() == null ? "" : props.getKeyPrefix().trim();
         if (!prefix.isEmpty() && !prefix.endsWith("/")) prefix += "/";
+
         return prefix + UUID.randomUUID() + "-" + nameOnly;
     }
 
+    private static int normalizeExpirySeconds(int ttlSeconds, int fallbackSeconds) {
+        int s = ttlSeconds > 0 ? ttlSeconds : fallbackSeconds;
+        if (s > MAX_PRESIGN_SECONDS) s = MAX_PRESIGN_SECONDS;
+        return Math.max(s, 1);
+    }
+
     /** Upload file và trả về pre-signed GET URL với TTL cấu hình. */
-    // ĐỔI kiểu trả về từ String -> UploadResult
     public UploadResult upload(@NonNull final MultipartFile file) throws Exception {
         final String objectKey = buildObjectKey(file.getOriginalFilename());
         final String contentType = Objects.requireNonNullElse(
@@ -97,7 +147,7 @@ public class MinioChannel {
         );
 
         try (InputStream in = file.getInputStream()) {
-            minioClient.putObject(
+            internalClient.putObject(
                     PutObjectArgs.builder()
                             .bucket(props.getBucket())
                             .object(objectKey)
@@ -107,21 +157,21 @@ public class MinioChannel {
             );
         }
 
-        String url = minioClient.getPresignedObjectUrl(
+        // Presign bằng presignClient (endpoint PUBLIC) => KHÔNG replace host nữa
+        String url = presignClient.getPresignedObjectUrl(
                 GetPresignedObjectUrlArgs.builder()
-                        .method(io.minio.http.Method.GET)
+                        .method(Method.GET)
                         .bucket(props.getBucket())
                         .object(objectKey)
-                        .expiry(props.getPresignExpirySeconds())
+                        .expiry(normalizeExpirySeconds(0, props.getPresignExpirySeconds()))
                         .build()
         );
 
-        // Trả về cả objectKey + url
         return new UploadResult(objectKey, url);
     }
 
     public GetObjectResponse downloadStream(String bucket, String objectKey) throws Exception {
-        return minioClient.getObject(
+        return internalClient.getObject(
                 GetObjectArgs.builder()
                         .bucket(bucket)
                         .object(objectKey)
@@ -131,23 +181,26 @@ public class MinioChannel {
 
     /** (Tuỳ chọn) Tạo pre-signed URL GET/PUT với TTL truyền vào. */
     public String presignedGetUrl(String objectKey, int ttlSeconds) throws Exception {
-        return minioClient.getPresignedObjectUrl(
+        return presignClient.getPresignedObjectUrl(
                 GetPresignedObjectUrlArgs.builder()
-                        .method(io.minio.http.Method.GET)
+                        .method(Method.GET)
                         .bucket(props.getBucket())
                         .object(objectKey)
-                        .expiry(ttlSeconds > 0 ? ttlSeconds : props.getPresignExpirySeconds())
+                        .expiry(normalizeExpirySeconds(ttlSeconds, props.getPresignExpirySeconds()))
                         .build()
         );
     }
 
     public String presignedPutUrl(String objectKey, int ttlSeconds, String contentType) throws Exception {
-        return minioClient.getPresignedObjectUrl(
+        // Giữ nguyên signature và tham số contentType như code cũ.
+        // Lưu ý: nếu bạn muốn server bắt buộc Content-Type khớp khi upload,
+        // cách đúng là ký với signed headers; ở đây giữ logic cũ (extraQueryParams) để không phá call-site.
+        return presignClient.getPresignedObjectUrl(
                 GetPresignedObjectUrlArgs.builder()
-                        .method(io.minio.http.Method.PUT)
+                        .method(Method.PUT)
                         .bucket(props.getBucket())
                         .object(objectKey)
-                        .expiry(ttlSeconds > 0 ? ttlSeconds : props.getPresignExpirySeconds())
+                        .expiry(normalizeExpirySeconds(ttlSeconds, props.getPresignExpirySeconds()))
                         .extraQueryParams(
                                 StringUtils.hasText(contentType)
                                         ? java.util.Map.of("Content-Type", contentType)
@@ -158,7 +211,7 @@ public class MinioChannel {
     }
 
     public StatObjectResponse statObject(String bucket, String objectKey) throws Exception {
-        return minioClient.statObject(
+        return internalClient.statObject(
                 StatObjectArgs.builder()
                         .bucket(bucket)
                         .object(objectKey)
@@ -167,7 +220,7 @@ public class MinioChannel {
     }
 
     public GetObjectResponse getObjectRange(String bucket, String objectKey, long start, long length) throws Exception {
-        return minioClient.getObject(
+        return internalClient.getObject(
                 GetObjectArgs.builder()
                         .bucket(bucket)
                         .object(objectKey)
@@ -180,7 +233,7 @@ public class MinioChannel {
     public void removeObject(String objectKey) {
         if (objectKey == null || objectKey.isBlank()) return;
         try {
-            minioClient.removeObject(
+            internalClient.removeObject(
                     RemoveObjectArgs.builder()
                             .bucket(props.getBucket())
                             .object(objectKey)
@@ -198,20 +251,29 @@ public class MinioChannel {
 
         try {
             List<DeleteObject> deletes = objectKeys.stream()
-                    .filter(Objects::nonNull) // bỏ null
+                    .filter(Objects::nonNull)
+                    .filter(s -> !s.isBlank())
                     .map(DeleteObject::new)
                     .toList();
 
             if (!deletes.isEmpty()) {
-                Iterable<Result<DeleteError>> results = minioClient.removeObjects(
+                Iterable<Result<DeleteError>> results = internalClient.removeObjects(
                         RemoveObjectsArgs.builder()
-                                .bucket(minioProps.getBucket())
+                                .bucket(props.getBucket())
                                 .objects(deletes)
                                 .build()
                 );
+
                 for (Result<DeleteError> result : results) {
-                    DeleteError error = result.get();
-                    log.warn("Failed to delete object {} - {}", error.objectName(), error.message());
+                    try {
+                        DeleteError error = result.get();
+                        if (error != null) {
+                            log.warn("Failed to delete object {} - {}", error.objectName(), error.message());
+                        }
+                    } catch (ErrorResponseException e) {
+                        log.warn("Delete error response: {}", e.getMessage());
+                        throw e;
+                    }
                 }
             }
         } catch (Exception e) {
@@ -219,9 +281,7 @@ public class MinioChannel {
         }
     }
 
-
-
-    /** Đọc toàn bộ InputStream → byte[] với buffer 8KB. */
+    /** Đọc toàn bộ InputStream → byte[] với buffer 8KB (giữ lại nếu bạn cần). */
     private static byte[] readAllBytes(InputStream in) throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         byte[] buf = new byte[8192];

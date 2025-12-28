@@ -57,15 +57,41 @@ public class ApplicationInitConfig {
                 User user = User.builder()
                         .email("admin@example.com")
                         .password("admin123")
-                        .fullName("123456")
+                        .fullName("ADMIN")
                         .enabled(true)
                         .roles(roles)
                         .build();
                 userRepository.save(user);
-                log.warn("admin user has been created with default email: admin@example.com password: 123456, please change it");
+                log.warn("admin user has been created with default email: admin@example.com password: admin123, please change it");
             }
 
+            if (Boolean.FALSE.equals(userRepository.existsByEmail("teacher@example.com"))) {
+                HashSet<Role> roles = new HashSet<>();
+                roleRepository.findByName("TEACHER").ifPresent(roles::add);
+                User user = User.builder()
+                        .email("teacher@example.com")
+                        .password("teacher123")
+                        .fullName("TEACHER EXAMPLE 1")
+                        .enabled(true)
+                        .roles(roles)
+                        .build();
+                userRepository.save(user);
+                log.warn("teacher user has been created with default email: teacher@example.com password: teacher123, please change it");
+            }
 
+            if (Boolean.FALSE.equals(userRepository.existsByEmail("student@example.com"))) {
+                HashSet<Role> roles = new HashSet<>();
+                roleRepository.findByName("STUDENT").ifPresent(roles::add);
+                User user = User.builder()
+                        .email("student@example.com")
+                        .password("student123")
+                        .fullName("STUDENT EXAMPLE 1")
+                        .enabled(true)
+                        .roles(roles)
+                        .build();
+                userRepository.save(user);
+                log.warn("student user has been created with default email: student@example.com password: student123, please change it");
+            }
         };
     }
 }

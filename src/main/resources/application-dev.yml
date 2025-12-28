@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/elearning_kma
+    url: ${POSTGRES_URL}
     username: ${POSTGRES_USER}
     password: ${POSTGRES_PASSWORD}
     driver-class-name: org.postgresql.Driver
@@ -38,8 +38,8 @@ spring:
           writetimeout: 5000
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
   cache:
     type: redis
     redis:
@@ -71,9 +71,10 @@ application:
     front-end:
       verification-code-length: 6
       verification-code-expiration-minutes: 15 # in minutes
-      activation-url: http://localhost:4200/activate-account
+      activation-url: ${MAIL_ACTIVATION_URL}
   minio:
     endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+    server-url: ${MINIO_SERVER_URL}
     access-key: ${MINIO_ROOT_USER}
     secret-key: ${MINIO_ROOT_PASSWORD}
     bucket: resources
@@ -84,10 +85,10 @@ application:
     oauth2:
       client-id: ${GOOGLE_CLIENT_ID}
   zalo-pay:
-    app-id: 2553
-    key1: PcY4iZIKFCIdgZvA6ueMcMHHUbRLYjPL
-    key2: kLtgPl8HHhfvMuDHPwKfgfsY4Ydm9eIz
-    endpoint: https://sb-openapi.zalopay.vn/v2/create
-    callback-url: https://92f894cfeab2.ngrok-free.app/api/v1/payment/callback
+    app-id: ${ZALO_PAY_APP_ID}
+    key1: ${ZALO_PAY_KEY1}
+    key2: ${ZALO_PAY_KEY2}
+    endpoint: ${ZALO_PAY_ENDPOINT}
+    callback-url: ${ZALO_PAY_CALLBACK_URL}
 server:
   port: 8080
